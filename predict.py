@@ -134,6 +134,9 @@ def predict_evaluate(layers):
             if len(images)==0:
                 break
             for l in range(len(layers)):
+                kl = dir(layers[l])
+                if '__name__' in kl and 'layer_batchnorm' in layers[l].__name__():
+                    layers[l].train = False
                 images = layers[l].forward(images)
             loss, delta, predict = cross_entropy_loss(images, label)
             p = np.argmax(predict, axis=-1)
@@ -158,7 +161,7 @@ def predict_evaluate(layers):
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_4_loss_0.387276_pre_0.915__pf_pn_fixed.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_33_loss_0.085326_pre_0.972__pf_pn_fixed.pkl'
     layers = loading_model(10)
     predict_or_evaluate = False
     predict_evaluate(layers)

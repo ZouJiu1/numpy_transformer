@@ -3,10 +3,26 @@
 I write a VIT network in numpy fully, including forward and backpropagation.<br>
 including those layers, **multi attention**, **PatchEmbed**, **Position_add**, **convolution**, **Fullconnect**, **flatten**, **Relu**, **layer_norm**, **Cross Entropy loss** and **MSE loss**<br>
 In training, it use cpu and slowly, so I use different settings<br>
-Training it with MNIST dataset, **it’s precision can > 90%**<br>
+
+Training it with MNIST dataset, **it’s precision can reach to 97.2%**, it's setting is <br>
+```
+    epoch = 36
+    batchsize = 100
+    lr = 0.001
+    embed_dim = 96
+    images_shape = (batchsize, 1, 30-2, 30-2)
+    n_patch = 7
+    patchnorm = True
+    # [0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1]
+    fixed     = 1 #False
+    cls_token = 0 #True
+    num_h = [2*2] * 6 #[3, 6, 12, 3, 6, 12]
+    patch_convolu = 0 #False
+```
+
 this codes provide functions to save model and restore model to train<br>
 you can find those models in model dir<br><br>
-Train with command<br><br>
+Train with command<br>
 ```
 python transformer_of_image.py
 ```
@@ -18,26 +34,32 @@ python predict.py
 ```
 
 ### precision
+train in MacBook Pro 2020 Intel
 
 | classes | precision |
 | ------ | ------ |
-| 0 | 0.9887755102040816 |
-| 1 | 0.9876651982378855 |
-| 2 | 0.9689922480620154 |
-| 3 | 0.9633663366336633 |
-| 4 | 0.9592668024439919 |
-| 5 | 0.9495515695067265 |
-| 6 | 0.9728601252609603 |
-| 7 | 0.938715953307393 |
-| 8 | 0.9332648870636551 |
-| 9 | 0.9534192269573836 |
-| all precision | 0.90 |
+| 0 | 0.9908163265306122 |
+| 1 | 0.9903083700440528 |
+| 2 | 0.9748062015503876 |
+| 3 | 0.9831683168316832 |
+| 4 | 0.9674134419551935 |
+| 5 | 0.9708520179372198 |
+| 6 | 0.9739039665970772 |
+| 7 | 0.9630350194552529 |
+| 8 | 0.9517453798767967 |
+| 9 | 0.9544103072348861 |
+| all precision | 0.972 |
+
+### gpt in numpy
+
+now I'm training the model
 
 ## blogs
 [numpy实现VIT vision transformer在MNIST-https://zhuanlan.zhihu.com/p/645326689](https://zhuanlan.zhihu.com/p/645326689)<br>
 
 
 总共实现了这几个层：
+
 [numpy实现vision transformer图像输入的patch-https://zhuanlan.zhihu.com/p/645318207](https://zhuanlan.zhihu.com/p/645318207)
 
 [numpy实现vision transformer的position embedding-https://zhuanlan.zhihu.com/p/645320199](https://zhuanlan.zhihu.com/p/645320199)

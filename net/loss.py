@@ -24,7 +24,7 @@ def torch_compare_cross_entropy(predict:np.ndarray, label:np.ndarray):
     return output, k
     
 def cross_entropy_loss(predict:np.ndarray, label:np.ndarray):
-    p_shift = predict - np.max(predict, axis = -1)[:, np.newaxis]   # avoid too large in exp 
+    p_shift = predict - np.max(predict, axis = -1)[..., np.newaxis]   # avoid too large in exp 
     softmax = np.exp(p_shift) / np.sum(np.exp(p_shift), axis = -1)[:, np.newaxis]
     loss = -np.sum(label * np.log(softmax + 1e-10)) / predict.shape[0] #avoid log(0)
     partial = (softmax - label) / predict.shape[0]

@@ -4,6 +4,7 @@ import numpy as np
 from net.fullconnect import fclayer
 from net.Convolution import convolution_layer
 from net.layernorm import layer_norm
+from net.Embedding import Embedding_layer
 
 class PatchEmbed_flatten(object):
     def __init__(self, embed_dim, images_shape, n_patch, patchnorm=True) -> None:
@@ -106,6 +107,41 @@ class PatchEmbed_convolution(object):
         if self.patchnorm:
             self.norm.setzero()
         self.convolution.setzero()
+
+class Position_Embedding(Embedding_layer):
+    def __init__(self, context_length, vocab_size,  embed_dim):
+        self.context_length = context_length
+        self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim)
+        self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim)
+
+    def forward(self, inputs):
+        n, sequence_length = inputs.shape
+        te = self.text_embedding.forward(inputs) # n, sequence_length, embed_dim
+        po = self.pos_embedding.forward(np.arange(sequence_length)) # sequence_length, embed_dim
+        if len(po.shape)!=3:
+            po = np.expand_dims(po, 0)
+        return te + po
+
+    def backward(self, delta):
+        input_delta = self.text_embedding.backward(delta)
+        delta = np.sum(delta, axis = 0, keepdims=False)
+        _ = self.pos_embedding.backward(delta)
+        return input_delta
+
+    def update(self, lr):
+        self.text_embedding.update(lr)
+        self.pos_embedding.update(lr)
+
+    def setzero(self):
+        self.text_embedding.setzero()
+        self.pos_embedding.setzero()
+
+    def save_model(self):
+        return [self.text_embedding.save_model(), self.pos_embedding.save_model()]
+
+    def restore_model(self, models):
+        self.text_embedding.restore_model(models[0])
+        self.pos_embedding.restore_model(models[1])
 
 if __name__=="__main__":
     batchsize = 10

@@ -57,10 +57,11 @@ class fclayer(object):
             output = output + self.bias_params[np.newaxis, :]
         return output
     
-    def backward(self, delta, inputs):
+    def backward(self, delta, inputs=[]):
         #previous layer delta
         input_delta = np.matmul(delta, self.params.T)
-
+        if len(inputs)==0:
+            inputs = self.inputs
         #params bias delta
         if len(delta.shape)==3:
             delta__ = np.reshape(delta, (-1, delta.shape[-1]))

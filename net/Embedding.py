@@ -39,8 +39,19 @@ class Embedding_layer(object):
         output = np.reshape(output, outshape)
         return output
 
-    def backward(self, delta, flatten):
-        self.delta[flatten, :] += delta
+    def backward(self, delta, flatten=[]):
+
+        if len(flatten)!=0:
+            isk = tuple([-1, self.delta.shape[-1]])
+            delta = np.reshape(delta, isk)
+            for i in range(len(flatten)):
+                self.delta[flatten[i], :] += delta[i]
+        else:
+            isk = tuple([-1, self.delta.shape[-1]])
+            delta = np.reshape(delta, isk)
+            for i in range(len(self.flatten)):
+                self.delta[self.flatten[i], :] += delta[i]
+
         return self.delta
 
     def setzero(self):
@@ -74,7 +85,7 @@ def train_single():
 
 if __name__=="__main__":
     #https://discuss.pytorch.org/t/how-nn-embedding-trained/32533/11
-    # train_single()
+    train_single()
 
     num_embeddings = 1000
     embedding_dim = 100

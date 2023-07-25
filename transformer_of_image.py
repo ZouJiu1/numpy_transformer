@@ -27,7 +27,7 @@ abspath = abspath.replace(filename, "")
 # https://github.com/l5shi/Image-Recognition-on-MNIST-dataset/blob/master/AlexNet.ipynb
 
 def transformer_image_train(num_classes):
-    epoch = 30
+    epoch = 36
     batchsize = 100
     lr = 0.001
     embed_dim = 96
@@ -123,7 +123,7 @@ def transformer_image_train(num_classes):
             # lr = lr * dot
         if i==20:
             lr = lr * 0.1
-        elif i==26:
+        elif i==33:
             lr = lr * 0.1
         k = np.arange(len(train_l))
         np.random.shuffle(k)
@@ -202,7 +202,7 @@ def transformer_image_train(num_classes):
             k = dir(l)
             if 'restore_model' in k and 'save_model' in k:
                 allmodel.append(l.save_model())
-        name = "epoch_"+str(i)+"_loss_"+str(round(meanloss, 6))+"_pre_"+str(round(precision, 6))+"_%s.pkl"%choose
+        name = "epoch_"+str(i+25)+"_loss_"+str(round(meanloss, 6))+"_pre_"+str(round(precision, 6))+"_%s.pkl"%choose
         
         with open(os.path.join(modelpath, name), 'wb') as obj:
             pickle.dump(allmodel, obj)
@@ -217,7 +217,7 @@ def transformer_image_train(num_classes):
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r''
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_60_loss_0.092195_pre_0.981__pf_pn_fixed.pkl'
     logdir = os.path.join(savepath, 'log')
     os.makedirs(logdir, exist_ok=True)
     transformer_image_train(10)

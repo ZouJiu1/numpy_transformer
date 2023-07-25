@@ -17,7 +17,7 @@ class attention_layer():
         self.softmax = Softmax()
         self.gelu = GELU()
     
-    def forward(self, inputs):
+    def forward(self, inputs, masks = []):
         out = self.norm.forward(inputs)
         batch, block, _ = inputs.shape
         self.out = out
@@ -35,6 +35,8 @@ class attention_layer():
                 nik = qkv[n, :, 1, i]
                 niv = qkv[n, :, 2, i]
                 att = np.matmul(niq, nik.T) / np.sqrt(self.len_single)
+                if len(masks) > 0:
+                    att = att + masks
                 atg__ = self.softmax.forward(att, axis=-1)
                 self.atg__[n][i] = atg__
                 rek = np.matmul(atg__, niv)
