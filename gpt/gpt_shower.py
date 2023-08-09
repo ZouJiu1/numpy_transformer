@@ -5,7 +5,15 @@
 Useful links:
  - Karpathy's amazing youtube video: https://www.youtube.com/watch?v=kCc8FmEb1nY
 '"""
+import os
+abspath = os.path.abspath(__file__)
+filename = os.sep.join(abspath.split(os.sep)[-2:])
+abspath = abspath.replace(filename, "")
+import sys
+sys.path.append(abspath)
+import numpy as np
 
+from net.loss import cross_entropy_loss
 import warnings
 
 from argparse import ArgumentParser
@@ -60,12 +68,18 @@ def parse_args():
     parser = ArgumentParser()
     
     # Data parameters
-    parser.add_argument(f"--file", type=str, help="Path to the text file to train on.", default="1984_George_Orwell.txt")
+    parser.add_argument(f"--file", type=str, help="Path to the text file to train on.", \
+        default = r"C:\Users\10696\Desktop\access\numpy_transformer\dataset\George_Orwellcopy.txt")
+        # default = r"C:\Users\10696\Desktop\access\numpy_transformer\dataset\George_Orwell.txt")
     parser.add_argument(f"--context_length", type=int, help="Size of the context. Default is 256.", default=256)
+    # parser.add_argument(f"--context_length", type=int, help="Size of the context. Default is 256.", default=260)
     
     # Model parameters
     parser.add_argument(f"--model", type=str, help="Size of the model to use. Default is 'tiny'.", default=None)
-    parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default=12)
+    # parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default = 2 )
+    # parser.add_argument(f"--embed_dim", type=int, help="If model is not specified -> hidden transformer dimensionality.", default = 60)
+    # parser.add_argument(f"--n_heads", type=int, help="If model is not specified -> number of transformer heads.", default=3)
+    parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default=6)
     parser.add_argument(f"--embed_dim", type=int, help="If model is not specified -> hidden transformer dimensionality.", default=192)
     parser.add_argument(f"--n_heads", type=int, help="If model is not specified -> number of transformer heads.", default=3)
     
@@ -73,9 +87,11 @@ def parse_args():
     parser.add_argument(f"--experiment_name", type=str, help="Name of the experiment to be logged with W&B", default="GPT-Model")
     parser.add_argument(f"--max_iters", type=int, help="Maximum training iterations. Default is 5000.", default=5000)
     parser.add_argument(f"--batch_size", type=int, help="Batch size for training.", default=64)
-    parser.add_argument(f"--lr", type=int, help="Learning rate for training.", default=3e-4)
-    parser.add_argument(f"--vp", type=float, help="Validation percentage. Default is 0.2 (20%).", default=0.2)
-    parser.add_argument(f"--checkpoint", type=str, help="Path to the model checkpoint.", default="GPT_ckpt.pt")
+    # parser.add_argument(f"--batch_size", type=int, help="Batch size for training.", default=1)
+    parser.add_argument(f"--lr", type = int, help = "Learning rate for training.", default=0.0003)
+    parser.add_argument(f"--vp", type = float, help = "Validation percentage. Default is 0.2 (20%).", default = 0.2)
+    parser.add_argument(f"--checkpoint", type = str, help = "Path to the model checkpoint.", \
+        default = r"C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\GPT_ckpt.pt")
     
     # Generation parameters
     parser.add_argument(f"--n_gen_samples", type=int, help="Number of samples to generate.", default=50)
@@ -86,10 +102,10 @@ def parse_args():
 def get_device():
     """Gets the CUDA device if available, warns that code will run on CPU only otherwise"""
     
-    if torch.cuda.is_available:
-        device = torch.device("cuda")
-        print("Found GPU: ", torch.cuda.get_device_name(device))
-        return device
+    # if torch.cuda.is_available:
+    #     device = torch.device("cuda")
+    #     print("Found GPU: ", torch.cuda.get_device_name(device))
+    #     return device
     
     warnings.warn("WARNING: No GPU found - Training on CPU.")
     return torch.device("cpu")
@@ -140,6 +156,11 @@ class SelfAttention(nn.Module):
         
         # Computing the attention cues.        
         attn = ((q @ k.transpose(-2, -1)) / (self.embed_dim**0.5 + 1e-5))  # (B, T, C) @ (B, C, T) = (B, T, T)
+        k = torch.tril(torch.ones(T, T))
+        kk = k == 0
+        k[kk] = -1e6
+
+        attnkkk = attn.clone()
         attn = attn.masked_fill(torch.tril(torch.ones(T, T)).to(x.device) == 0, float("-inf"))  # Masking future characters (right-triangular part of attn) with -inf
         attn = attn.softmax(-1)  # Normalizing the contributions of the attention cues (to sum to one)
         return attn @ v
@@ -217,8 +238,13 @@ class Transformer(nn.Module):
         
         # Getting text and position embeddings and using them as input to decoder blocks
         te = self.text_embedding(idxs)
-        pe = self.pos_embedding(torch.tensor(list(range(T))).to(idxs.device)).unsqueeze(0).repeat_interleave(B, 0)
-        
+        pe2 = self.pos_embedding(torch.tensor(list(range(T))).to(idxs.device))
+        pe = pe2.unsqueeze(0)
+        # pe = pe6.repeat_interleave(B, 0)
+        # k = pe[0]
+        # k2 = pe[1]
+
+        # kl = torch.sum(k!=k2)
         # Running input through decoder blocks
         x = te + pe
         for block in self.blocks:
@@ -228,29 +254,31 @@ class Transformer(nn.Module):
         return self.linear(self.ln(x))
     
 
-def training_loop(model, optimizer, criterion, batch_size, max_iterations, train_string, val_string, ctoi, checkpoint_path, name="GPT", log=True, device="cpu"):
+def training_loop(model, itoc, optimizer, criterion, batch_size, max_iterations, train_string, val_string, ctoi, checkpoint_path, name="GPT", log=False, device="cpu"):
     """Trains the GPT model"""
     
-    if log:
-        # Starting a new Weights & Biases run
-        wandb.init(project="Papers Re-implementations",
-                entity="peutlefaire",
-                name=name,
-                config={
-                    "depth": model.depth,
-                    "embed_dim": model.embed_dim,
-                    "n_heads": model.n_heads,
-                    "max_iterations": max_iterations,
-                    "batch_size": batch_size,
-                    "lr": optimizer.param_groups[0]["lr"]
-                    }
-                )
+    # if log:
+    #     # Starting a new Weights & Biases run
+    #     wandb.init(project="Papers Re-implementations",
+    #             entity="peutlefaire",
+    #             name=name,
+    #             config={
+    #                 "depth": model.depth,
+    #                 "embed_dim": model.embed_dim,
+    #                 "n_heads": model.n_heads,
+    #                 "max_iterations": max_iterations,
+    #                 "batch_size": batch_size,
+    #                 "lr": optimizer.param_groups[0]["lr"]
+    #                 }
+    #             )
     
     lowest_val_loss = float("inf")
     model = model.to(device)
     
     print("\nTraining started")
+    epoch = max_iterations * (model.context_length + 1) / len(train_string) # 1.6 epochs
     progress_bar = tqdm(range(1, max_iterations+1), desc="Training")
+    file = open(r"C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\generated.txt", "w")
     for iteration in progress_bar:
         # Training step
         model.train()
@@ -258,6 +286,17 @@ def training_loop(model, optimizer, criterion, batch_size, max_iterations, train
         y_hat = model(x)
         B, T, C = y_hat.shape
         train_loss = criterion(y_hat.view(B*T, C), y.view(B*T))
+
+        ishape = y_hat.size()
+        y_hat = torch.reshape(y_hat, (-1, model.vocab_size))
+        labels = torch.zeros_like(y_hat)
+        label_single = torch.reshape(y, (-1,)).long()
+        labels[torch.arange(len(y_hat)), label_single] = 1
+        # k = np.sum(labels, axis = -1)
+        loss, delta, predict = cross_entropy_loss(y_hat.detach().cpu().numpy(), labels.detach().cpu().numpy())
+        p = np.argmax(predict, axis=-1)
+        trpre = np.sum(label_single.detach().cpu().numpy()==p) / len(label_single)
+
         optimizer.zero_grad()
         train_loss.backward()
         optimizer.step()
@@ -269,23 +308,45 @@ def training_loop(model, optimizer, criterion, batch_size, max_iterations, train
             y_hat = model(x)
             B, T, C = y_hat.shape
             val_loss = criterion(model(x).view(B*T, C), y.view(B*T))
+
+            ishape = y_hat.size()
+            y_hat = torch.reshape(y_hat, (-1, model.vocab_size))
+            labels = torch.zeros_like(y_hat)
+            label_single = torch.reshape(y, (-1,)).long()
+            labels[torch.arange(len(y_hat)), label_single] = 1
+            # k = np.sum(labels, axis = -1)
+            loss, delta, predict = cross_entropy_loss(y_hat.detach().cpu().numpy(), labels.detach().cpu().numpy())
+            p = np.argmax(predict, axis=-1)
+            valpre = np.sum(label_single.detach().cpu().numpy()==p) / len(label_single)
             
             if val_loss < lowest_val_loss:
                 lowest_val_loss = val_loss
                 torch.save(model.state_dict(), checkpoint_path)
+
+        if (iteration + 1) % 1 == 0:
+            # Getting new text in batch
+            n=1
+            vocab_size = len(list(itoc.keys()))
+            output = torch.randint(0, vocab_size, (n, 1)).to(device)
             
-        if log:
-            # Logging information to W&B
-            wandb.log({
-                "training loss": train_loss.item(),
-                "validation loss": val_loss.item()
-            })
+            for _ in range(model.context_length-1):
+                probs = model(output)[:, -1].softmax(-1)
+                next_chars = torch.multinomial(probs, 1)
+                output = torch.cat((output, next_chars), dim=-1)
             
-        progress_bar.set_description(f"Iteration {iteration}/{max_iterations}  ----- Train loss: {train_loss.item():.3f}   -----   Validation loss: {val_loss.item():.3f}-- ")
-            
-    if log:
-        # Finishing W&B session
-        wandb.finish()
+            # Converting the predictions into sentences
+            generated_samples = [[itoc[c.item()] for c in o] for o in output.cpu()]
+            lines = "".join(generated_samples[0])
+            # Storing the sentences into the file
+            for i, sample in enumerate(generated_samples):
+                file.write("".join(sample) + "\n")
+            file.flush()
+
+        progress_bar.set_description(f"I {iteration}/{max_iterations} Tl: {train_loss.item():.3f} {valpre:.3f} {trpre:.3f} Vl:{val_loss.item():.3f}-- {lines}")
+    file.close()
+    # if log:
+    #     # Finishing W&B session
+    #     wandb.finish()
 
 @torch.no_grad()
 def generate_text(model, n, context_length, itoc, checkpoint_path, file_path="generated.txt", device="cpu", write=True):
@@ -324,6 +385,8 @@ def main():
     
     # Creating training and validation data
     text = read_text(args["file"])
+    import re
+    text = re.sub(r'\n', "", text)
     chars = sorted(list(set(c for c in text)))
     ctoi = {c: i for i, c in enumerate(chars)}  # Char-to-index
     itoc = {i: c for i, c in enumerate(chars)}  # Index-to-char
@@ -333,7 +396,7 @@ def main():
     print(f"Text is composed of {len(text)} characters: {len(train_string)} for training and {len(val_string)} for validation.")
     
     # Getting the device
-    device = get_device()    
+    device = get_device()
     
     # Creating the model
     model_args = NAME_TO_PARAMS[args["model"]] if args["model"] else {k: args[k] for k in ["depth", "embed_dim", "n_heads"]}
@@ -342,7 +405,7 @@ def main():
     print(f"\nCreated transformer model:\n\t{model_args}\n\tnumber of parameters: {sum([p.numel() for p in model.parameters()])}")
     
     # Training loop
-    training_loop(model, optimizer, nn.CrossEntropyLoss(), args["batch_size"], args["max_iters"], train_string, val_string, ctoi, args["checkpoint"], name="GPT", device=device)
+    training_loop(model, itoc, optimizer, nn.CrossEntropyLoss(), args["batch_size"], args["max_iters"], train_string, val_string, ctoi, args["checkpoint"], name="GPT", device=device)
     
     
     # Text generation

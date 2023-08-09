@@ -108,6 +108,18 @@ class PatchEmbed_convolution(object):
             self.norm.setzero()
         self.convolution.setzero()
 
+    def save_model(self):
+        model = []
+        if self.patchnorm:
+            model.append(self.norm.save_model())
+        model.append(self.convolution.save_model())
+        return model
+
+    def restore_model(self, models):
+        if self.patchnorm:
+            self.norm.restore_model(models[0])
+        self.convolution.restore_model(models[-1])
+
 class Position_Embedding(Embedding_layer):
     def __init__(self, context_length, vocab_size,  embed_dim):
         self.context_length = context_length
@@ -144,7 +156,7 @@ class Position_Embedding(Embedding_layer):
         self.pos_embedding.restore_model(models[1])
 
 if __name__=="__main__":
-    batchsize = 10
+    batchsize = 1
     lr = 0.0001
     embed_dim = 30
     images_shape = (batchsize, 3, 30-2, 30-2)
@@ -152,8 +164,20 @@ if __name__=="__main__":
     inputs = np.random.randn(batchsize, 3, 30-2, 30-2)
     patchemb = PatchEmbed_flatten(embed_dim, images_shape, n_patch)
     # patchemb = PatchEmbed_convolution(embed_dim, images_shape, n_patch)
-    output = patchemb.forward(inputs)
+    
+    context_length = 100
+    vocab_size = 300
+    embed_dim = 200
+    posiemb = Position_Embedding(context_length, vocab_size, embed_dim)
 
-    delta = np.ones_like(output)
-    input_delta = patchemb.backward(delta)
-    k = 0
+    outputs = np.random.randn(batchsize, context_length, embed_dim)
+    inputs = np.random.randint(0, vocab_size, (batchsize, context_length))
+    # inputs = np.arange(batchsize * context_length).reshape((batchsize, context_length))
+    for i in range(30000):
+        out = posiemb.forward(inputs)
+        sum = np.sum((outputs - out) * (outputs - out))
+        delta = 2 * (out - outputs)
+        _ = posiemb.backward(delta)
+        posiemb.update(lr = 0.001)
+        posiemb.setzero()
+        print(sum)

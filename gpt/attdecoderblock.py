@@ -1,9 +1,16 @@
+import os
+abspath = os.path.abspath(__file__)
+filename = os.sep.join(abspath.split(os.sep)[-2:])
+abspath = abspath.replace(filename, "")
+import sys
+sys.path.append(abspath)
+
 import numpy as np
 from net.layernorm import layer_norm
 from net.fullconnect import fclayer
-from net.activation import Softmax, GELU
+from net.activation import Softmax, GELU, ReLU
 
-class attention_layer():
+class attdecoderblock_layer():
     def __init__(self, embed_dim, num_h):
         self.embed_dim = embed_dim
         self.num_h = num_h
@@ -11,17 +18,29 @@ class attention_layer():
 
         self.norm = layer_norm(self.embed_dim)
         self.norm1 = layer_norm(self.embed_dim)
+        self.norm2 = layer_norm(self.embed_dim)
         self.qkvfc = fclayer(self.embed_dim, self.len_single * num_h * 3, True)
-        self.fc0 = fclayer(self.embed_dim, self.embed_dim * 2, True)
-        self.fc1 = fclayer(self.embed_dim * 2, self.embed_dim, True)
+        
+        self.fc0 = fclayer(self.embed_dim, self.embed_dim * (2*2), True)
+        self.fc1 = fclayer(self.embed_dim * (2*2), self.embed_dim, True)
+        self.fc_out = fclayer(self.embed_dim, self.embed_dim, True)
         self.softmax = Softmax()
-        self.gelu = GELU()
+        # self.gelu = GELU()
+        self.relu = ReLU()
     
     def forward(self, inputs, masks = []):
-        out = self.norm.forward(inputs)
-        batch, block, _ = inputs.shape
-        self.out = out
-        qkv = self.qkvfc.forward(out).reshape((batch, block, 2+1, self.num_h, self.len_single))
+        self.out0 = self.norm.forward(inputs)
+
+        self.out2 = self.fc0.forward(self.out0)
+        self.out2 = self.relu.forward(self.out2)
+        self.out6 = self.fc1.forward(self.out2)
+        
+        self.out6 = inputs + self.out6
+        
+        self.outnorm = self.norm1.forward(self.out6)
+        batch, block, _ = self.outnorm.shape
+        
+        qkv = self.qkvfc.forward(self.outnorm).reshape((batch, block, 2+1, self.num_h, self.len_single))
         result = []
         self.delta_qkv = np.zeros_like(qkv)
         self.batch = batch
@@ -43,23 +62,14 @@ class attention_layer():
                 tmp.append(rek)
             tmp = np.concatenate(tmp, axis = -1)
             result.append(tmp)
-        rkk = np.stack(result)
+        self.rkk = np.stack(result)
 
-        input1 = inputs + rkk
-        self.out1 = self.norm1.forward(input1)
-        self.out2 = self.fc0.forward(self.out1)
-        self.out2 = self.gelu.forward(self.out2)
-        self.out6 = self.fc1.forward(self.out2)
-
-        outrek = self.out6 + input1
-        return outrek
+        self.out1 = self.fc_out.forward(self.rkk)
+        input1 = self.out6 + self.out1
+        return input1
 
     def backward(self, delta):
-        d = self.fc1.backward(delta, self.out2)
-        d = self.gelu.backward(d)
-        d = self.fc0.backward(d, self.out1)
-        delta0 = self.norm1.backward(d)
-        delta0 += delta
+        delta0 = self.fc_out.backward(delta, self.rkk)
         for n in range(self.batch):
             n_delta = delta0[n]
             for i in range(self.num_h):
@@ -83,9 +93,15 @@ class attention_layer():
                 self.delta_qkv[n, :, 0, i] = niq_delta
 
         qkvdelta = np.reshape(self.delta_qkv, (self.batch, self.block, -1))
-        qkvdelta = self.qkvfc.backward(qkvdelta, self.out)
-        input_delta = self.norm.backward(qkvdelta)
-        input_delta += delta0
+        qkvdelta = self.qkvfc.backward(qkvdelta, self.outnorm)
+        qkvdelta = self.norm1.backward(qkvdelta)
+        
+        qkvdelta += delta
+        d = self.fc1.backward(qkvdelta, self.out2)
+        d = self.relu.backward(d)
+        d = self.fc0.backward(d, self.out0)
+        input_delta = self.norm.backward(d)
+        input_delta += qkvdelta
         return input_delta
 
     def update(self, lr):
@@ -94,6 +110,7 @@ class attention_layer():
         self.qkvfc.update(lr)
         self.fc0.update(lr)
         self.fc1.update(lr)
+        self.fc_out.update(lr)
 
     def setzero(self):
         self.norm.setzero()
@@ -101,17 +118,19 @@ class attention_layer():
         self.qkvfc.setzero()
         self.fc0.setzero()
         self.fc1.setzero()
+        self.fc_out.setzero()
 
     def save_model(self):
         return [self.norm.save_model(), self.qkvfc.save_model(), self.norm1.save_model(), \
-            self.fc0.save_model(), self.fc1.save_model()]
+            self.fc0.save_model(), self.fc1.save_model(), self.fc_out.save_model()]
 
     def restore_model(self, models):
         self.norm.restore_model(models[0])
         self.qkvfc.restore_model(models[1])
         self.norm1.restore_model(models[2])
-        self.fc0.restore_model(models[3])
+        self.fc0.restore_model(models[2+1])
         self.fc1.restore_model(models[2*2])
+        self.fc_out.restore_model(models[2*2+1])
 
 if __name__=="__main__":
     batchsize = 10
@@ -119,7 +138,7 @@ if __name__=="__main__":
     n_patch = 7
     num_h = 2
     inputs = np.random.randn(batchsize, n_patch**2, embed_dim)
-    att = attention_layer(embed_dim, num_h)
+    att = attdecoderblock_layer(embed_dim, num_h)
     
     outputs = np.random.randn(batchsize, n_patch**2, embed_dim)
     for i in range(10000):

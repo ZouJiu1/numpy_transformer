@@ -35,7 +35,7 @@ class Embedding_layer(object):
     def forward(self, inputs):
         outshape = list(inputs.shape) + [self.embedding_dim]
         self.flatten = inputs.flatten()
-        output = self.params[self.flatten, :]
+        output = self.params[self.flatten]
         output = np.reshape(output, outshape)
         return output
 
@@ -69,36 +69,60 @@ class Embedding_layer(object):
 def train_single():
     num_embeddings = 1000
     embedding_dim = 100
-    params = np.random.normal(0, 1, (num_embeddings, embedding_dim)) * 100
+    params = np.random.normal(0, 1, (num_embeddings, embedding_dim))
 
     Embedding = Embedding_layer(num_embeddings, embedding_dim, params.copy())
-    outputs = np.random.rand(num_embeddings, embedding_dim)
+    outputs = np.random.normal(0, 1, (300, embedding_dim))
+    # inputs = np.random.randint(0, 1000, (300)).astype(np.int32)
+    inputs = np.arange(300).astype(np.int32)
     for i in range(30000):
-        inputs = np.arange(1000).astype(np.int32)
         out = Embedding.forward(inputs)
         sum = np.sum((outputs - out) * (outputs - out))
         delta = 2 * (out - outputs)
-        _ = Embedding.backward(delta.copy().reshape(-1, embedding_dim), Embedding.flatten)
+        _ = Embedding.backward(delta)
         Embedding.update(lr = 0.001)
         Embedding.setzero()
         print(sum)
 
+# def train_single():
+#     num_embeddings = 300
+#     context_length = 100 * 6
+#     embedding_dim = 200
+#     batchsize = 1
+#     params = np.random.normal(0, 1, (num_embeddings, embedding_dim))
+
+#     Embedding = Embedding_layer(num_embeddings, embedding_dim, params.copy())
+#     outputs = np.random.rand(batchsize, context_length, embedding_dim)
+#     inputs = np.random.randint(0, num_embeddings, (batchsize, context_length)).astype(np.int32)
+#     for i in range(30000):
+#         out = Embedding.forward(inputs)
+#         sum = np.sum((outputs - out) * (outputs - out))
+#         delta = 2 * (out - outputs)
+#         _ = Embedding.backward(delta)
+#         Embedding.update(lr = 0.001)
+#         Embedding.setzero()
+#         print(sum)
+
 if __name__=="__main__":
     #https://discuss.pytorch.org/t/how-nn-embedding-trained/32533/11
-    train_single()
+    # train_single()
 
     num_embeddings = 1000
     embedding_dim = 100
-    inputs = np.arange(30).reshape((10, 3)).astype(np.int32)
-    params = np.random.normal(0, 1, (num_embeddings, embedding_dim)) * 100
+    batchsize = 10
+    sequence_length = 2000
+    # inputs = np.arange(30).reshape((10, 3)).astype(np.int32)
+    inputs = np.random.randint(0, num_embeddings, (batchsize, sequence_length)).astype(np.int32)
+    params = np.random.normal(0, 1, (num_embeddings, embedding_dim))
 
     Embedding = Embedding_layer(num_embeddings, embedding_dim, params.copy())
     output = Embedding.forward(inputs)
-    k = output == params.copy()[np.arange(30), :].reshape((list(inputs.shape) + [embedding_dim]))
-    assert k.all()
-    delta_l = np.ones((list(inputs.shape) + [embedding_dim])).astype(np.float64)
-    delta = Embedding.backward(delta_l.copy().reshape(-1, embedding_dim), Embedding.flatten)
-    Embedding.update(lr = 1)
+    # k = output == params.copy()[np.arange(30), :].reshape((list(inputs.shape) + [embedding_dim]))
+    # assert k.all()
+    # delta_l = np.ones((list(inputs.shape) + [embedding_dim])).astype(np.float64)
+    delta_l = np.random.randn(inputs.shape[0], inputs.shape[1], embedding_dim).astype(np.float64)
+    _ = Embedding.backward(delta_l)
+    # Embedding.update(lr = 1)
     # Embedding.setzero()
 
     # num_embeddings = 10
@@ -115,6 +139,7 @@ if __name__=="__main__":
     # Embedding.update(lr = 1)
     # # Embedding.setzero()
 
-    output_torch, grad_params, params_aft = torch_compare_Embedding(num_embeddings, embedding_dim, delta_l, inputs, params.copy())
+    output_torch, grad_params, params_aft = torch_compare_Embedding(num_embeddings, embedding_dim, delta_l.copy(), inputs, params.copy())
     assert np.mean(np.abs(output - output_torch.cpu().detach().numpy())) < 1e-6, np.mean(np.abs(output - output_torch.cpu().detach().numpy()))
     assert np.mean(np.abs(Embedding.delta - grad_params.cpu().detach().numpy())) < 1e-6, np.mean(np.abs(Embedding.delta - grad_params.cpu().detach().numpy()))
+    k = 0

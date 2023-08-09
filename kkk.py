@@ -1,6 +1,11 @@
 import numpy as np
 import torch
-
+from multiprocessing import cpu_count, Pool
+p = Pool(cpu_count())
+for i in ww:
+    p.apply_async(fun, )
+p.join()
+p.close()
 # def create_triangle(shape):
 #     one = np.ones((1, shape, shape))
 #     trimask = np.triu(one, k = 1)
