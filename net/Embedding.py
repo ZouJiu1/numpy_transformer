@@ -56,6 +56,12 @@ class Embedding_layer(object):
 
     def setzero(self):
         self.delta[...] = 0
+    
+    def getdelta(self):
+        return self.delta
+    
+    def normdelta(self, maxnorm, l2norm):
+        self.delta = self.delta * maxnorm / l2norm
 
     def update(self, lr=1e-10):
         self.params -= lr * self.delta

@@ -98,14 +98,14 @@ def getinputs(context_length, batchsize, input_texts, char2id, id2char):
 def transformer_image_train():
     vocab_size, id2char, char2id, input_texts = getdata()
 
-    all_steps = 6e3 + 1e3
+    all_steps = 6e3 - 1e3
     
     batchsize = 66 - 2
-    learning_rate = 0.01
-    embed_dim = 60
-    num_layer = 3
+    learning_rate = 0.0001  # / batchsize
+    embed_dim = 192
+    num_layer = 13
     num_h = [3] * num_layer
-    context_length = 30
+    context_length = 260 - 2*2
     a_batch_steps = len(input_texts) / (batchsize * context_length)
 
     logfile = os.path.join(logdir, 'log_gpt_poetry.txt')
@@ -117,20 +117,20 @@ def transformer_image_train():
     at0 = attdecoderblock_layer(embed_dim, num_h[0])
     at1 = attdecoderblock_layer(embed_dim, num_h[1])
     at2 = attdecoderblock_layer(embed_dim, num_h[2])
-    # at3 = attdecoderblock_layer(embed_dim, num_h[3])
-    # at4 = attdecoderblock_layer(embed_dim, num_h[4])
-    # at5 = attdecoderblock_layer(embed_dim, num_h[5])
-    # at6 = attdecoderblock_layer(embed_dim, num_h[6])
-    # at7 = attdecoderblock_layer(embed_dim, num_h[7])
-    # at8 = attdecoderblock_layer(embed_dim, num_h[8])
-    # at9 = attdecoderblock_layer(embed_dim, num_h[9])
-    # at10 = attdecoderblock_layer(embed_dim, num_h[10])
-    # at11 = attdecoderblock_layer(embed_dim, num_h[11])
-    # at12 = attdecoderblock_layer(embed_dim, num_h[12])
+    at3 = attdecoderblock_layer(embed_dim, num_h[3])
+    at4 = attdecoderblock_layer(embed_dim, num_h[4])
+    at5 = attdecoderblock_layer(embed_dim, num_h[5])
+    at6 = attdecoderblock_layer(embed_dim, num_h[6])
+    at7 = attdecoderblock_layer(embed_dim, num_h[7])
+    at8 = attdecoderblock_layer(embed_dim, num_h[8])
+    at9 = attdecoderblock_layer(embed_dim, num_h[9])
+    at10 = attdecoderblock_layer(embed_dim, num_h[10])
+    at11 = attdecoderblock_layer(embed_dim, num_h[11])
+    at12 = attdecoderblock_layer(embed_dim, num_h[12])
     # at13 = attdecoderblock_layer(embed_dim, num_h[13])
 
-    # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
-    layers += [at0, at1, at2]
+    layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
+    # layers += [at0, at1, at2]
 
     norm = layer_norm(embed_dim)
     cll = gpt_linear_layer(embed_dim, vocab_size, 3)
@@ -188,8 +188,8 @@ def transformer_image_train():
             # k = np.sum(labels, axis = -1)
             loss, delta, predict = cross_entropy_loss(inputs, labels)
             
-            loss = loss * batchsize
-            delta = delta * batchsize
+            # loss = loss * batchsize
+            # delta = delta * batchsize
 
             delta = np.reshape(delta, ishape)
             meanloss += loss

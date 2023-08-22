@@ -93,7 +93,7 @@ def transformer_image_train():
 
     all_steps = 6e3
     batchsize = 60
-    learning_rate = 0.00029
+    learning_rate = 0.001 / batchsize
     embed_dim = 192
     num_layer = 10 + 1 + 1
     num_h = [3] * num_layer

@@ -69,7 +69,7 @@ def parse_args():
     
     # Data parameters
     parser.add_argument(f"--file", type=str, help="Path to the text file to train on.", \
-        default = r"C:\Users\10696\Desktop\access\numpy_transformer\dataset\George_Orwellcopy.txt")
+        default = r"C:\Users\10696\Desktop\access\numpy_transformer\dataset\George_Orwell.txt")
         # default = r"C:\Users\10696\Desktop\access\numpy_transformer\dataset\George_Orwell.txt")
     parser.add_argument(f"--context_length", type=int, help="Size of the context. Default is 256.", default=256)
     # parser.add_argument(f"--context_length", type=int, help="Size of the context. Default is 256.", default=260)
@@ -79,7 +79,7 @@ def parse_args():
     # parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default = 2 )
     # parser.add_argument(f"--embed_dim", type=int, help="If model is not specified -> hidden transformer dimensionality.", default = 60)
     # parser.add_argument(f"--n_heads", type=int, help="If model is not specified -> number of transformer heads.", default=3)
-    parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default=6)
+    parser.add_argument(f"--depth", type=int, help="If model is not specified -> number of transformer decoder blocks.", default=12)
     parser.add_argument(f"--embed_dim", type=int, help="If model is not specified -> hidden transformer dimensionality.", default=192)
     parser.add_argument(f"--n_heads", type=int, help="If model is not specified -> number of transformer heads.", default=3)
     
@@ -156,11 +156,12 @@ class SelfAttention(nn.Module):
         
         # Computing the attention cues.        
         attn = ((q @ k.transpose(-2, -1)) / (self.embed_dim**0.5 + 1e-5))  # (B, T, C) @ (B, C, T) = (B, T, T)
-        k = torch.tril(torch.ones(T, T))
-        kk = k == 0
-        k[kk] = -1e6
 
-        attnkkk = attn.clone()
+        # k = torch.tril(torch.ones(T, T))
+        # kk = k == 0
+        # k[kk] = -1e6
+        # attnkkk = attn.clone()
+
         attn = attn.masked_fill(torch.tril(torch.ones(T, T)).to(x.device) == 0, float("-inf"))  # Masking future characters (right-triangular part of attn) with -inf
         attn = attn.softmax(-1)  # Normalizing the contributions of the attention cues (to sum to one)
         return attn @ v
@@ -278,7 +279,7 @@ def training_loop(model, itoc, optimizer, criterion, batch_size, max_iterations,
     print("\nTraining started")
     epoch = max_iterations * (model.context_length + 1) / len(train_string) # 1.6 epochs
     progress_bar = tqdm(range(1, max_iterations+1), desc="Training")
-    file = open(r"C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\generated.txt", "w")
+    file = open(r"C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\generated.txt", "w", encoding='utf-8')
     for iteration in progress_bar:
         # Training step
         model.train()
@@ -339,7 +340,10 @@ def training_loop(model, itoc, optimizer, criterion, batch_size, max_iterations,
             lines = "".join(generated_samples[0])
             # Storing the sentences into the file
             for i, sample in enumerate(generated_samples):
-                file.write("".join(sample) + "\n")
+                try:
+                    file.write("".join(sample) + "\n")
+                except:
+                    k = 0
             file.flush()
 
         progress_bar.set_description(f"I {iteration}/{max_iterations} Tl: {train_loss.item():.3f} {valpre:.3f} {trpre:.3f} Vl:{val_loss.item():.3f}-- {lines}")
@@ -401,17 +405,16 @@ def main():
     # Creating the model
     model_args = NAME_TO_PARAMS[args["model"]] if args["model"] else {k: args[k] for k in ["depth", "embed_dim", "n_heads"]}
     model = Transformer(len(chars), args["context_length"], model_args["depth"], model_args["embed_dim"], model_args["n_heads"])
-    optimizer = Adam(model.parameters(), lr=args["lr"])
+    # optimizer = Adam(model.parameters(), lr=args["lr"])
+    optimizer = torch.optim.SGD(model.parameters(), lr=args["lr"], nesterov=True, momentum=0.99)
     print(f"\nCreated transformer model:\n\t{model_args}\n\tnumber of parameters: {sum([p.numel() for p in model.parameters()])}")
     
     # Training loop
     training_loop(model, itoc, optimizer, nn.CrossEntropyLoss(), args["batch_size"], args["max_iters"], train_string, val_string, ctoi, args["checkpoint"], name="GPT", device=device)
     
-    
     # Text generation
     generate_text(model, args["n_gen_samples"], args["context_length"], itoc, args["checkpoint"], args["gen_samples_path"], device=device)
     print("\n\n\nProgram completed successfully!")
-    
     
 if __name__ == "__main__":
     main()

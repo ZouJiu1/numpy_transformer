@@ -35,7 +35,7 @@ def torch_compare_convolution(in_channel, out_channel, kernel_size, stride, padd
     return output, k, grad_params, grad_bias
 
 class convolution_layer(object):
-    def __init__(self, in_channel, out_channel, kernel_size, stride=[1,1], padding=[0,0], bias=False, params=[], bias_params=[]):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=[1,1], padding=[0,0], bias=True, params=[], bias_params=[]):
         self.in_channel = in_channel
         self.out_channel = out_channel
         if isinstance(kernel_size, int):
@@ -45,13 +45,13 @@ class convolution_layer(object):
         if list(params)!=[]:
             self.params = params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (in_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.params = np.random.uniform(-ranges, ranges, (out_channel, in_channel, kernel_size[0], kernel_size[1]))
 
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
-            ranges = np.sqrt(6 / (in_channel + out_channel))
+            ranges = np.sqrt(1 / (in_channel * self.kernel_size[0] * self.kernel_size[1]))
             self.bias_params = np.random.uniform(-ranges, ranges, (out_channel))
 
         self.params_delta = np.zeros((out_channel, in_channel, kernel_size[0], kernel_size[1])).astype(np.float64)
@@ -135,7 +135,7 @@ class convolution_layer(object):
         # previous layer delta
         input_delta = np.zeros_like(self.pad_input).astype(np.float64)
         if self.bias:
-            self.bias_delta = np.sum(delta, axis=(0, 2, 3))
+            self.bias_delta += np.sum(delta, axis=(0, 2, 3))
         for i in range(self.outshape[0]):
             for oc in range(self.outshape[1]):
                 for h in range(self.outshape[2]):
@@ -152,9 +152,6 @@ class convolution_layer(object):
         ih = self.pad_input.shape[-2]
         iw = self.pad_input.shape[-1]
         input_delta = input_delta[:, :, self.padding[0]:ih-self.padding[0], self.padding[1]:iw-self.padding[1]]
-        self.params     -= self.params_delta * lr
-        if self.bias:
-            self.bias_params   -= self.bias_delta * lr
         return input_delta, self.params_delta, self.bias_delta
     
     def backward(self, delta):
@@ -185,10 +182,14 @@ class convolution_layer(object):
         output = np.reshape(output, (outshape_params_gradient[0], \
             outshape_params_gradient[2], outshape_params_gradient[3], outshape_params_gradient[1]))
         params_delta = np.transpose(output, (3, 0, 1, 2))
-        if H_outshape_params_gradient > self.kernel_size[0]:
+        if H_outshape_params_gradient > self.kernel_size[0] and W_outshape_params_gradient > self.kernel_size[1]:
+            self.params_delta += params_delta[:, :, :self.kernel_size[0], :self.kernel_size[1]]
+        elif H_outshape_params_gradient > self.kernel_size[0]:
             self.params_delta += params_delta[:, :, :self.kernel_size[0], :]
-        if W_outshape_params_gradient > self.kernel_size[1]:
+        elif W_outshape_params_gradient > self.kernel_size[1]:
             self.params_delta += params_delta[:, :, :, :self.kernel_size[1]]
+        else:
+            self.params_delta += params_delta
         
         # calcul externel pad shape and input_delta
         remain_h = (self.ishape[2] + 2 * self.padding[0] - self.kernel_size[0]) % self.stride[0]
@@ -215,14 +216,22 @@ class convolution_layer(object):
         
         return input_delta
 
+    def getdelta(self):
+        if self.bias:
+            return []
+        return [self.params_delta]
+    
+    def normdelta(self, maxnorm, l2norm):
+        self.delta = self.delta * maxnorm / l2norm
+
+    def setzero(self):
+        self.params_delta[...]  = 0.0
+        self.bias_delta[...] = 0.0
+
     def update(self, lr = 1e-10):
         self.params -= self.params_delta * lr
         if self.bias:
             self.bias_params   -= self.bias_delta * lr
-    
-    def setzero(self):
-        self.params_delta[...] = 0
-        self.bias_delta[...] = 0
 
     def save_model(self):
         return [self.params, self.bias_params]
@@ -231,9 +240,12 @@ class convolution_layer(object):
         self.params = models[0]
         self.bias_params = models[1]
 
+    def __name__(self):
+        return "convolution_layer"
+
 def train_single():
-    inputs = np.random.rand(2, 6, 10, 10).astype(np.float64)
-    outputs = np.random.rand(2, 10, 10, 10).astype(np.float64)
+    inputs = np.random.rand(2, 6, 10, 30).astype(np.float64)
+    outputs = np.random.rand(2, 10, 10, 30).astype(np.float64)
     batchsize = inputs.shape[0]
     in_channel = inputs.shape[1]
     ih = inputs.shape[2]
@@ -261,7 +273,7 @@ def train_single():
         print(sum)
 
 if __name__=="__main__":
-    # train_single()
+    train_single()
     
     inputs = np.random.rand(2, 6, 100, 300).astype(np.float64)
     batchsize = inputs.shape[0]
