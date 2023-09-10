@@ -50,7 +50,30 @@ train in MacBook Pro 2020 Intel
 | 9 | 0.9544103072348861 |
 | all precision | 0.972 |
 
-### gpt in numpy
+## gpt character numpy
+in directory `gpt_character`
+
+**Train and predict**
+```
+python gpt_character\gpt_train_english_char.py
+python gpt_character\gpt_charpredict.py
+```
+
+**Result**
+```
+'m: nopqrstuv',
+'p: qrstuvwxy',
+'w: xyz abcde',
+'w: xyz abcde',
+'x: yz abcdef',
+'f: ghijklmno',
+'t: uvwxyz ab',
+'p: qrstuvwxy',
+'y: z abcdefg',
+'w: xyz abcde'
+```
+
+## gpt in numpy
 
 now I'm training the model
 

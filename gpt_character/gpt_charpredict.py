@@ -50,22 +50,26 @@ def predict():
     else:
         exit(-1)
 
-    inputs = np.random.randint(0, vocab_size, (1, 1))
-    output = deepcopy(inputs)
-    for ij in range(context_length - 1):
-        text = deepcopy(inputs)
-        for l in range(len(layers)):
-            inputs = layers[l].forward(inputs)
-        inputs = np.reshape(inputs, (-1, vocab_size))
-        out = inputs - np.max(inputs, axis = -1)[..., np.newaxis]   # avoid too large in exp 
-        softmax = np.exp(out) / np.sum(np.exp(out), axis = -1)[:, np.newaxis]
-        out = np.argmax(softmax, axis = -1)
-        out = np.expand_dims(out, (-1))
-        inputs = out.copy()
-        output = np.concatenate([output, out], axis = -1)
+    ret = []
+    for num in range(10):
+        inputs = np.random.randint(0, vocab_size, (1, 1))
+        output = deepcopy(inputs)
+        for ij in range(context_length - 1):
+            text = deepcopy(inputs)
+            for l in range(len(layers)):
+                inputs = layers[l].forward(inputs)
+            inputs = np.reshape(inputs, (-1, vocab_size))
+            out = inputs - np.max(inputs, axis = -1)[..., np.newaxis]   # avoid too large in exp 
+            softmax = np.exp(out) / np.sum(np.exp(out), axis = -1)[:, np.newaxis]
+            out = np.argmax(softmax, axis = -1)
+            out = np.expand_dims(out, (-1))
+            inputs = out.copy()
+            output = np.concatenate([output, out], axis = -1)
 
-    output = [id2char[int(ij)] for ij in output[0]]
-    return ''.join(output[:200])
+        output = [id2char[int(ij)] for ij in output[0]]
+        output = [output[0]] + [": "] + output[1:]
+        ret.append(''.join(output[:200]))
+    return ret
 
 
 
