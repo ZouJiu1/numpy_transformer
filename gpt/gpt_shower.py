@@ -405,8 +405,8 @@ def main():
     # Creating the model
     model_args = NAME_TO_PARAMS[args["model"]] if args["model"] else {k: args[k] for k in ["depth", "embed_dim", "n_heads"]}
     model = Transformer(len(chars), args["context_length"], model_args["depth"], model_args["embed_dim"], model_args["n_heads"])
-    # optimizer = Adam(model.parameters(), lr=args["lr"])
-    optimizer = torch.optim.SGD(model.parameters(), lr=args["lr"], nesterov=True, momentum=0.99)
+    optimizer = Adam(model.parameters(), lr=args["lr"])
+    # optimizer = torch.optim.SGD(model.parameters(), lr=args["lr"], nesterov=True, momentum=0.99)
     print(f"\nCreated transformer model:\n\t{model_args}\n\tnumber of parameters: {sum([p.numel() for p in model.parameters()])}")
     
     # Training loop

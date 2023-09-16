@@ -11,24 +11,24 @@ from net.fullconnect import fclayer
 from net.activation import Softmax, GELU, ReLU
 
 class attdecoderblock_layer():
-    def __init__(self, embed_dim, num_h):
+    def __init__(self, embed_dim, num_h, adam=False):
         self.embed_dim = embed_dim
         self.num_h = num_h
         self.len_single =  embed_dim // num_h
 
-        self.norm = layer_norm(self.embed_dim)
-        self.norm1 = layer_norm(self.embed_dim)
-        self.norm2 = layer_norm(self.embed_dim)
-        self.qkvfc = fclayer(self.embed_dim, self.len_single * num_h * 3, True)
+        self.norm = layer_norm(self.embed_dim, adam=adam)
+        self.norm1 = layer_norm(self.embed_dim, adam=adam)
+        self.qkvfc = fclayer(self.embed_dim, self.len_single * num_h * 3, True, adam=adam)
         
-        self.fc0 = fclayer(self.embed_dim, self.embed_dim * (2*2), True)
-        self.fc1 = fclayer(self.embed_dim * (2*2), self.embed_dim, True)
-        self.fc_out = fclayer(self.embed_dim, self.embed_dim, True)
+        self.fc0 = fclayer(self.embed_dim, self.embed_dim * (2*2), True, adam=adam)
+        self.fc1 = fclayer(self.embed_dim * (2*2), self.embed_dim, True, adam=adam)
+        self.fc_out = fclayer(self.embed_dim, self.embed_dim, True, adam=adam)
         self.softmax = Softmax()
-        # self.gelu = GELU()
         self.relu = ReLU()
+        self.adam = adam
     
     def forward(self, inputs, masks = []):
+        self.masks = masks
         self.out0 = self.norm.forward(inputs)
 
         self.out2 = self.fc0.forward(self.out0)
@@ -55,7 +55,7 @@ class attdecoderblock_layer():
                 niv = qkv[n, :, 2, i]
                 att = np.matmul(niq, nik.T) / np.sqrt(self.len_single)
                 if len(masks) > 0:
-                    att = att + masks[n]
+                    att = att + masks
                 atg__ = self.softmax.forward(att, axis=-1)
                 self.atg__[n][i] = atg__
                 rek = np.matmul(atg__, niv)
@@ -96,7 +96,7 @@ class attdecoderblock_layer():
         qkvdelta = self.qkvfc.backward(qkvdelta, self.outnorm)
         qkvdelta = self.norm1.backward(qkvdelta)
         
-        qkvdelta += delta
+        qkvdelta = qkvdelta + delta
         d = self.fc1.backward(qkvdelta, self.out2)
         d = self.relu.backward(d)
         d = self.fc0.backward(d, self.out0)
@@ -132,11 +132,21 @@ class attdecoderblock_layer():
         self.fc1.restore_model(models[2*2])
         self.fc_out.restore_model(models[2*2+1])
 
+def create_masks_future(inputs):
+    # future
+    n, sequence_length = inputs.shape
+    input_mask = np.tril(np.ones((sequence_length, sequence_length)))
+    # input_mask[input_mask==0] = -np.inf
+    input_mask[input_mask==0] = -1e6
+    input_mask[input_mask==1] = 0
+    return input_mask
+
 if __name__=="__main__":
     batchsize = 10
     embed_dim = 100
-    n_patch = 7
+    n_patch = 6
     num_h = 2
+    mask = create_masks_future(np.random.randn(batchsize, n_patch**2))
     inputs = np.random.randn(batchsize, n_patch**2, embed_dim)
     att = attdecoderblock_layer(embed_dim, num_h)
     

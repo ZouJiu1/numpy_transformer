@@ -23,7 +23,7 @@ def torch_compare_Embedding(num_embeddings, embedding_dim, delta, inputs, params
     return output, grad_params, params_aft
 
 class Embedding_layer(object):
-    def __init__(self, num_embeddings, embedding_dim, params=[]):
+    def __init__(self, num_embeddings, embedding_dim, params=[], adam = False):
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if list(params)!=[]:
@@ -31,6 +31,13 @@ class Embedding_layer(object):
         else:
             self.params = np.random.normal(0, 1, (num_embeddings, embedding_dim))
         self.delta = np.zeros_like(self.params)
+        self.adam = adam
+        self.beta1 = 0.9
+        self.beta2 = 0.999
+        self.epsadam = 10**(2-10)
+        self.moment_p = np.zeros_like(self.params)
+        self.rmsprop_p = np.zeros_like(self.params)
+        self.t = 1
 
     def forward(self, inputs):
         outshape = list(inputs.shape) + [self.embedding_dim]
@@ -64,7 +71,15 @@ class Embedding_layer(object):
         self.delta = self.delta * maxnorm / l2norm
 
     def update(self, lr=1e-10):
-        self.params -= lr * self.delta
+        if self.adam:
+            self.moment_p = self.beta1 * self.moment_p + (1 - self.beta1) * self.delta
+            self.rmsprop_p = self.beta2 * self.rmsprop_p + (1 - self.beta2) * self.delta**2
+            self.moment_p = self.moment_p / (1 - self.beta1**self.t)
+            self.rmsprop_p = self.rmsprop_p / (1 - self.beta2**self.t)
+            self.params -= (self.moment_p * lr / (np.sqrt(self.rmsprop_p)+ self.epsadam))
+            self.t += 1
+        else:
+            self.params -= lr * self.delta
 
     def save_model(self):
         return [self.params.astype(np.float32)]
@@ -111,7 +126,7 @@ def train_single():
 
 if __name__=="__main__":
     #https://discuss.pytorch.org/t/how-nn-embedding-trained/32533/11
-    # train_single()
+    train_single()
 
     num_embeddings = 1000
     embedding_dim = 100

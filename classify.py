@@ -4,28 +4,33 @@ from net.fullconnect import fclayer
 from net.activation import ReLU
 
 class classify_layer():
-    def __init__(self, embed_dim, batch, n_patch, num_classes, cls_token = True):
+    def __init__(self, embed_dim, batch, n_patch, num_classes, cls_token = True, adam=False, relu=True):
         self.batch = batch
         self.embed_dim = embed_dim
         self.n_patch = n_patch
         self.cls_token = cls_token
         if cls_token:
-            self.fc0 = fclayer(self.embed_dim, self.embed_dim, True)
+            self.fc0 = fclayer(self.embed_dim, self.embed_dim, True, adam=adam)
         else:
-            self.fc0 = fclayer(self.embed_dim * (n_patch**2), self.embed_dim, True)
+            self.fc0 = fclayer(self.embed_dim * (n_patch**2), self.embed_dim, True, adam=adam)
         self.relu    = ReLU()
-        self.fc1 = fclayer(self.embed_dim, num_classes, True)
+        self.fc1 = fclayer(self.embed_dim, num_classes, True, adam=adam)
+        self.reluact = relu
 
     def forward(self, inputs):
         self.inputs = inputs
         out0 = self.fc0.forward(inputs)
-        self.out1 = self.relu.forward(out0)
+        if self.reluact:
+            self.out1 = self.relu.forward(out0)
+        else:
+            self.out1 = out0.copy()
         out = self.fc1.forward(self.out1)
         return out
 
     def backward(self, delta):
         delta = self.fc1.backward(delta, self.out1)
-        delta = self.relu.backward(delta)
+        if self.reluact:
+            delta = self.relu.backward(delta)
         delta = self.fc0.backward(delta, self.inputs)
         if self.cls_token:
             zeros = np.zeros((self.batch, self.n_patch**2, self.embed_dim))

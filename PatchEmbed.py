@@ -1,6 +1,7 @@
 import os
 from copy import deepcopy
 import numpy as np
+from gpt.FixedEmbed import Position_Fixed
 from net.fullconnect import fclayer
 from net.Convolution import convolution_layer
 from net.layernorm import layer_norm
@@ -121,10 +122,12 @@ class PatchEmbed_convolution(object):
         self.convolution.restore_model(models[-1])
 
 class Position_Embedding(Embedding_layer):
-    def __init__(self, context_length, vocab_size,  embed_dim):
+    def __init__(self, context_length, vocab_size,  embed_dim, adam = False):
         self.context_length = context_length
-        self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim)
-        self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim)
+        self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim, adam = adam)
+        self.pos_embedding  = Position_Fixed(context_length, embed_dim)
+        # self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim, adam = adam)
+        self.adam = adam
 
     def forward(self, inputs):
         n, sequence_length = inputs.shape

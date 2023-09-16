@@ -74,7 +74,7 @@ def create_masks(input_mask):
     k = (1.0 - k) * (-1e6)
 
     #future
-    input_mask = np.tril(np.ones_like(k))
+    input_mask = np.tril(np.ones((sequence_length, sequence_length)))
     input_mask[input_mask==0] = -np.inf
     input_mask[input_mask==1] = 0
     return input_mask
@@ -82,7 +82,7 @@ def create_masks(input_mask):
 def transformer_image_train(num_classes):
     vocab_size, id2char, char2id, input_texts = getdata()
 
-    epoch = 10000
+    epoch = 10001
     batchsize = 10
     learning_rate = 0.0002
     # embed_dim = 210
@@ -176,7 +176,7 @@ def transformer_image_train(num_classes):
                 # input_mask[-1].extend([0])
                 inputs.append(tmp[:-1])
                 label.append(tmp[1:])
-                number += context_length + 1
+                number += 1
             if status > 0:
                 break
             alliter += 1

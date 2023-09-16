@@ -36,7 +36,7 @@ class attention_layer():
                 niv = qkv[n, :, 2, i]
                 att = np.matmul(niq, nik.T) / np.sqrt(self.len_single)
                 if len(masks) > 0:
-                    att = att + masks[n]
+                    att = att + masks
                 atg__ = self.softmax.forward(att, axis=-1)
                 self.atg__[n][i] = atg__
                 rek = np.matmul(atg__, niv)

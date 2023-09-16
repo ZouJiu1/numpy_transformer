@@ -37,7 +37,7 @@ def torch_compare_layernorm(normalized_shape, inputs, gamma, beta, elementwise_a
     return output, k, grad_gamma, grad_beta
 
 class layer_norm(object):
-    def __init__(self, normalized_shape, elementwise_affine = True, gamma = [], beta = []):
+    def __init__(self, normalized_shape, elementwise_affine = True, gamma = [], beta = [], adam = False):
         if isinstance(normalized_shape, int):
             normalized_shape = [normalized_shape]
         self.axis = None
@@ -53,6 +53,16 @@ class layer_norm(object):
 
         self.gamma_delta = np.zeros(normalized_shape).astype(np.float64)
         self.beta_delta = np.zeros(normalized_shape).astype(np.float64)
+        self.adam = adam
+        self.beta1 = 0.9
+        self.beta2 = 0.999
+        self.epsadam = 10**(2-10)
+        if elementwise_affine:
+            self.moment_g = np.zeros_like(self.gamma)
+            self.rmsprop_g = np.zeros_like(self.gamma)
+            self.moment_b = np.zeros_like(self.beta)
+            self.rmsprop_b = np.zeros_like(self.beta)
+        self.t = 1
         self.ep = 1e-5
 
     def forward(self, inputs):
@@ -110,8 +120,21 @@ class layer_norm(object):
 
     def update(self, lr = 1e-10):
         if self.elementwise_affine:
-            self.gamma -= self.gamma_delta * lr
-            self.beta -= self.beta_delta * lr
+            if self.adam:
+                self.moment_g = self.beta1 * self.moment_g + (1 - self.beta1) * self.gamma_delta
+                self.rmsprop_g = self.beta2 * self.rmsprop_g + (1 - self.beta2) * self.gamma_delta**2
+                self.moment_g = self.moment_g / (1 - self.beta1**self.t)
+                self.rmsprop_g = self.rmsprop_g / (1 - self.beta2**self.t)
+                self.moment_b = self.beta1 * self.moment_b + (1 - self.beta1) * self.beta_delta
+                self.rmsprop_b = self.beta2 * self.rmsprop_b + (1 - self.beta2) * self.beta_delta**2
+                self.moment_b = self.moment_b / (1 - self.beta1**self.t)
+                self.rmsprop_b = self.rmsprop_b / (1 - self.beta2**self.t)
+                self.t += 1
+                self.gamma -= (self.moment_g * lr / (np.sqrt(self.rmsprop_g)+ self.epsadam))
+                self.beta -= (self.moment_b * lr / (np.sqrt(self.rmsprop_b)+ self.epsadam))
+            else:
+                self.gamma -= self.gamma_delta * lr
+                self.beta -= self.beta_delta * lr
 
     def save_model(self):
         return [self.gamma, self.beta]

@@ -33,7 +33,7 @@ def torch_compare_fc(infeature, outfeature, bias, inputs, params, bias_params):
     return output, k, grad_params, grad_bias
 
 class fclayer(object):
-    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], name='', init = ''):
+    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], adam = False, name='', init = ''):
         self.infeature = infeature
         self.outfeature = outfeature
         self.bias = bias
@@ -49,7 +49,17 @@ class fclayer(object):
             self.bias_params = np.random.uniform(-ranges, ranges, (outfeature))
         self.params_delta = np.zeros((infeature, outfeature))
         self.bias_delta = np.zeros(outfeature)
-
+        self.adam = adam
+        self.beta1 = 0.9
+        self.beta2 = 0.999
+        self.epsadam = 10**(2-10)
+        self.moment_p = np.zeros_like(self.params)
+        self.rmsprop_p = np.zeros_like(self.params)
+        if bias:
+            self.moment_b = np.zeros_like(self.bias_params)
+            self.rmsprop_b = np.zeros_like(self.bias_params)
+        self.t = 1
+        
     def forward(self, inputs):
         self.inputs = inputs
         output = np.matmul(inputs, self.params)
@@ -82,9 +92,23 @@ class fclayer(object):
     def update(self, lr = 1e-10):
         # self.params_delta = np.clip(self.params_delta, -6, 6)
         # self.bias_delta = np.clip(self.bias_delta, -6, 6)
-        self.params -= self.params_delta * lr
-        if self.bias:
-            self.bias_params -= self.bias_delta * lr
+        if self.adam:
+            self.moment_p = self.beta1 * self.moment_p + (1 - self.beta1) * self.params_delta
+            self.rmsprop_p = self.beta2 * self.rmsprop_p + (1 - self.beta2) * self.params_delta**2
+            self.moment_p = self.moment_p / (1 - self.beta1**self.t)
+            self.rmsprop_p = self.rmsprop_p / (1 - self.beta2**self.t)
+            self.params -= (self.moment_p * lr / (np.sqrt(self.rmsprop_p)+ self.epsadam))
+            if self.bias:
+                self.moment_b = self.beta1 * self.moment_b + (1 - self.beta1) * self.bias_delta
+                self.rmsprop_b = self.beta2 * self.rmsprop_b + (1 - self.beta2) * self.bias_delta**2
+                self.moment_b = self.moment_b / (1 - self.beta1**self.t)
+                self.rmsprop_b = self.rmsprop_b / (1 - self.beta2**self.t)
+                self.bias_params -= (self.moment_b * lr / (np.sqrt(self.rmsprop_b)+ self.epsadam))
+            self.t += 1
+        else:
+            self.params -= self.params_delta * lr
+            if self.bias:
+                self.bias_params -= self.bias_delta * lr
 
     def save_model(self):
         return [self.params, self.bias_params]
@@ -92,6 +116,9 @@ class fclayer(object):
     def restore_model(self, models):
         self.params = models[0]
         self.bias_params = models[1]
+
+    def __name__(self):
+        return "fclayer"
 
 def train_single():
     inputs = np.random.rand(100, 1000)
