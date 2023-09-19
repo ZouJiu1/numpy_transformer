@@ -61,8 +61,9 @@ class Softmax(object):
                 k1 = np.dot(kk, kk.T)    ## nx1 dot 1xn = nxn, 也就是 element 的 multiply
             '''
             kkk = np.diagflat(kk) - np.dot(kk, kk.T)
-            k = np.dot(delta, kkk)
-            d += k
+            row_delta = np.array([delta[i, :]])
+            k = np.dot(row_delta, kkk)
+            d[i, :] += k[0]
         return d
 
     def setzero(self):
