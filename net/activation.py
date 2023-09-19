@@ -39,17 +39,31 @@ class SiLU(object):
 
 class Softmax(object):
     def forward(self, inputs, axis):
-        maxval = np.max(inputs)
+        maxval = np.max(inputs, axis = axis, keepdims=True)
         self.inputs = inputs - maxval
+        self.axis = axis
         try:
             self.out = np.exp(self.inputs) / np.sum(np.exp(self.inputs), axis = axis, keepdims=True)
-        except:
+        except Exception as e:
             k = 0
         return self.out
 
     def backward(self, delta, out):
-        k = (out - out**2) * delta
-        return k
+        # https://zhuanlan.zhihu.com/p/657177292
+        if len(out.shape)!=2 or self.axis not in [1, -1]:
+            exit(-1)
+        shape0, shape1 = out.shape
+        d = np.zeros((shape0, shape1))
+        for i in range(shape0):
+            kk = out[i].reshape((-1, 1))
+            '''
+                k0 = np.diagflat(kk)     ## 将对角线填充完整，也就是 out填充了对角线, 其他都是0的 
+                k1 = np.dot(kk, kk.T)    ## nx1 dot 1xn = nxn, 也就是 element 的 multiply
+            '''
+            kkk = np.diagflat(kk) - np.dot(kk, kk.T)
+            k = np.dot(delta, kkk)
+            d += k
+        return d
 
     def setzero(self):
         pass

@@ -217,7 +217,7 @@ def transformer_image_train(num_classes):
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_60_loss_0.092195_pre_0.981__pf_pn_fixed.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_60_loss_0.092195_pre_0 .981__pf_pn_fixed.pkl'
     logdir = os.path.join(savepath, 'log')
     os.makedirs(logdir, exist_ok=True)
     transformer_image_train(10)

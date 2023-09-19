@@ -95,15 +95,15 @@ class fclayer(object):
         if self.adam:
             self.moment_p = self.beta1 * self.moment_p + (1 - self.beta1) * self.params_delta
             self.rmsprop_p = self.beta2 * self.rmsprop_p + (1 - self.beta2) * self.params_delta**2
-            self.moment_p = self.moment_p / (1 - self.beta1**self.t)
-            self.rmsprop_p = self.rmsprop_p / (1 - self.beta2**self.t)
-            self.params -= (self.moment_p * lr / (np.sqrt(self.rmsprop_p)+ self.epsadam))
+            moment_p = self.moment_p / np.sqrt(1 - self.beta1**self.t)
+            rmsprop_p = self.rmsprop_p / np.sqrt(1 - self.beta2**self.t)
+            self.params -= (moment_p * lr / (np.sqrt(rmsprop_p)+ self.epsadam))
             if self.bias:
                 self.moment_b = self.beta1 * self.moment_b + (1 - self.beta1) * self.bias_delta
                 self.rmsprop_b = self.beta2 * self.rmsprop_b + (1 - self.beta2) * self.bias_delta**2
-                self.moment_b = self.moment_b / (1 - self.beta1**self.t)
-                self.rmsprop_b = self.rmsprop_b / (1 - self.beta2**self.t)
-                self.bias_params -= (self.moment_b * lr / (np.sqrt(self.rmsprop_b)+ self.epsadam))
+                moment_b = self.moment_b / np.sqrt(1 - self.beta1**self.t)
+                rmsprop_b = self.rmsprop_b / np.sqrt(1 - self.beta2**self.t)
+                self.bias_params -= (moment_b * lr / (np.sqrt(rmsprop_b)+ self.epsadam))
             self.t += 1
         else:
             self.params -= self.params_delta * lr

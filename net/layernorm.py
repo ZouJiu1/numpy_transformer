@@ -123,15 +123,15 @@ class layer_norm(object):
             if self.adam:
                 self.moment_g = self.beta1 * self.moment_g + (1 - self.beta1) * self.gamma_delta
                 self.rmsprop_g = self.beta2 * self.rmsprop_g + (1 - self.beta2) * self.gamma_delta**2
-                self.moment_g = self.moment_g / (1 - self.beta1**self.t)
-                self.rmsprop_g = self.rmsprop_g / (1 - self.beta2**self.t)
+                moment_g = self.moment_g / np.sqrt(1 - self.beta1**self.t)
+                rmsprop_g = self.rmsprop_g / np.sqrt(1 - self.beta2**self.t)
                 self.moment_b = self.beta1 * self.moment_b + (1 - self.beta1) * self.beta_delta
                 self.rmsprop_b = self.beta2 * self.rmsprop_b + (1 - self.beta2) * self.beta_delta**2
-                self.moment_b = self.moment_b / (1 - self.beta1**self.t)
-                self.rmsprop_b = self.rmsprop_b / (1 - self.beta2**self.t)
+                moment_b = self.moment_b / np.sqrt(1 - self.beta1**self.t)
+                rmsprop_b = self.rmsprop_b / np.sqrt(1 - self.beta2**self.t)
                 self.t += 1
-                self.gamma -= (self.moment_g * lr / (np.sqrt(self.rmsprop_g)+ self.epsadam))
-                self.beta -= (self.moment_b * lr / (np.sqrt(self.rmsprop_b)+ self.epsadam))
+                self.gamma -= (moment_g * lr / (np.sqrt(rmsprop_g)+ self.epsadam))
+                self.beta -= (moment_b * lr / (np.sqrt(rmsprop_b)+ self.epsadam))
             else:
                 self.gamma -= self.gamma_delta * lr
                 self.beta -= self.beta_delta * lr
@@ -151,7 +151,7 @@ def train_single():
     gamma = np.random.rand(60, 60).astype(np.float64)
     beta = np.random.rand(60, 60).astype(np.float64)
 
-    batchnorm = layer_norm(normalized_shape=normalized_shape, elementwise_affine=elementwise_affine, gamma=gamma, beta=beta)
+    batchnorm = layer_norm(normalized_shape=normalized_shape, elementwise_affine=elementwise_affine, gamma=gamma, beta=beta, adam=False)
     for i in range(60000):
         out = batchnorm.forward(inputs)
         sum = np.sum((inputs - out) * (inputs - out))

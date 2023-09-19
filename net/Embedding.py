@@ -74,9 +74,9 @@ class Embedding_layer(object):
         if self.adam:
             self.moment_p = self.beta1 * self.moment_p + (1 - self.beta1) * self.delta
             self.rmsprop_p = self.beta2 * self.rmsprop_p + (1 - self.beta2) * self.delta**2
-            self.moment_p = self.moment_p / (1 - self.beta1**self.t)
-            self.rmsprop_p = self.rmsprop_p / (1 - self.beta2**self.t)
-            self.params -= (self.moment_p * lr / (np.sqrt(self.rmsprop_p)+ self.epsadam))
+            moment_p = self.moment_p / np.sqrt(1 - self.beta1**self.t)
+            rmsprop_p = self.rmsprop_p / np.sqrt(1 - self.beta2**self.t)
+            self.params -= (moment_p * lr / (np.sqrt(rmsprop_p)+ self.epsadam))
             self.t += 1
         else:
             self.params -= lr * self.delta
