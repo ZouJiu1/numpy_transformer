@@ -14,6 +14,9 @@ from attdecoderblock import attdecoderblock_layer
 from net.layernorm import layer_norm
 from net.fullconnect import fclayer
 from gpt.gpt_linear import gpt_linear_layer
+import re
+from classify import classify_layer
+from net.flatten import flatten_layer
 
 from copy import deepcopy
 import json
@@ -23,21 +26,24 @@ import json
 # https://github.com/l5shi/Image-Recognition-on-MNIST-dataset/blob/master/AlexNet.ipynb
 
 def getdata():
-    kk = []
     dataset = os.path.join(abspath, 'dataset')
     os.makedirs(dataset, exist_ok=True)
-    id2char_char2id = os.path.join(abspath, 'dataset', r"gptpoetry_id_char.json")
+    id2char_char2id = os.path.join(abspath, 'dataset', r"gptpoetry3000.json")
     # inpath = os.path.join(abspath, 'dataset', r"train_10000.txt")
     
-    inpath = r'C:\Users\10696\Desktop\access\numpy_transformer\dataset\xiyouji_wuchengen.txt'
+    inpath = r'C:\Users\10696\Desktop\access\numpy_transformer\dataset\train_3000.txt'
     with open(inpath, 'r', encoding='utf-8') as obj:
         readcontent = obj.read()
     kk = [i if i!='\n' else " " for i in readcontent]
-
+    kk = "".join(kk)
+    kk = re.sub(r'   ', " ", kk)
+    kk = re.sub(r'  ', " ", kk)
+    kk = list(kk)
     # inpath = os.path.join(abspath, 'dataset', r"train_token_1000.txt")
     # with open(inpath, 'r', encoding='utf-8') as obj:
     #     for i in obj.readlines():
     #         kk.extend(i.strip().split(" "))
+
     while '□' in kk:
         kk.remove("□")
     unique = np.unique(kk)
@@ -63,6 +69,7 @@ def create_masks_future(inputs):
     n, sequence_length = inputs.shape
     input_mask = np.tril(np.ones((sequence_length, sequence_length)))
     input_mask[input_mask==0] = -np.inf
+    # input_mask[input_mask==0] = -1e6
     input_mask[input_mask==1] = 0
     return input_mask
 
@@ -73,8 +80,11 @@ def create_masks_pad(input_mask):
     k1 = input_mask[:, None, :]
     k2 = np.ones_like(input_mask)[:, :, None]
     k = k1 * k2
-    k = (1.0 - k) * (-1e6)
-    return input_mask
+    k = (1.0 - k)
+    k[k==1.0] = -np.inf
+    return k
+
+# k = create_masks_pad([[1, 1, 1, 1, 1, 0, 0], [1, 1, 1, 1, 1, 1, 0]])
 
 def getinputs(context_length, batchsize, input_texts, char2id, id2char):
     inputs = []
@@ -84,56 +94,67 @@ def getinputs(context_length, batchsize, input_texts, char2id, id2char):
     markedchar = [',', '. ']
     for id in id_start:
         tmp = [char2id[ci] for ci in input_texts[id : id + context_length + 1]]
-        inputchar = "".join([id2char[ci]  for ci in tmp])
-        input_mask.append([0 if inputchar[ci] in ['，', '。'] else 1 for ci in range(context_length)])
+        # inputchar = "".join([id2char[ci]  for ci in tmp])
+        # input_mask.append([1 for ci in range(context_length-1)])
+        # input_mask[-1].extend([0])
         inputs.append(tmp[:-1])
         label.append(tmp[1:])
     inputs = np.array(inputs)
+    if len(input_mask)==0:
+        input_mask = np.ones_like(inputs)
+            
     input_mask_fut = create_masks_future(inputs)
-    input_mask_pad = create_masks_pad(input_mask)
-    label_single = np.array(label).reshape(-1)
+    # input_mask_pad = create_masks_pad(input_mask)
+    input_mask = input_mask_fut
+    label_single = np.array(label) #.reshape(-1)
     
     return inputs, input_mask, label_single
 
 def transformer_image_train():
     vocab_size, id2char, char2id, input_texts = getdata()
 
-    all_steps = 6e3 - 1e3
-    
-    batchsize = 66 - 2
-    learning_rate = 0.0001  # / batchsize
-    embed_dim = 192
-    num_layer = 13
+    all_steps = 3000 - 1000
+    batchsize = 63 + 1
+    learning_rate = 0.003                         #   batchsize
+    embed_dim = 192 ## vocab_size if vocab_size%3==0 else (vocab_size//3) * 3 + 3 # 192
+    num_layer = 10 + 1 + 1
     num_h = [3] * num_layer
-    context_length = 260 - 2*2
-    a_batch_steps = len(input_texts) / (batchsize * context_length)
+    context_length = 100
 
-    logfile = os.path.join(logdir, 'log_gpt_poetry.txt')
+    ADAM = True
+    cls_token = True
+    float32 = True
+
+    logfile = os.path.join(logdir, 'log_gpt_poetry3000.txt')
     fpwrite = open(logfile, 'w', encoding='utf-8')
 
-    patchemb = Position_Embedding(context_length, vocab_size, embed_dim)
+    patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM)
     layers = [patchemb]
     
-    at0 = attdecoderblock_layer(embed_dim, num_h[0])
-    at1 = attdecoderblock_layer(embed_dim, num_h[1])
-    at2 = attdecoderblock_layer(embed_dim, num_h[2])
-    at3 = attdecoderblock_layer(embed_dim, num_h[3])
-    at4 = attdecoderblock_layer(embed_dim, num_h[4])
-    at5 = attdecoderblock_layer(embed_dim, num_h[5])
-    at6 = attdecoderblock_layer(embed_dim, num_h[6])
-    at7 = attdecoderblock_layer(embed_dim, num_h[7])
-    at8 = attdecoderblock_layer(embed_dim, num_h[8])
-    at9 = attdecoderblock_layer(embed_dim, num_h[9])
-    at10 = attdecoderblock_layer(embed_dim, num_h[10])
-    at11 = attdecoderblock_layer(embed_dim, num_h[11])
-    at12 = attdecoderblock_layer(embed_dim, num_h[12])
-    # at13 = attdecoderblock_layer(embed_dim, num_h[13])
+    at0 = attdecoderblock_layer(embed_dim, num_h[0], adam=ADAM, float32=float32)
+    at1 = attdecoderblock_layer(embed_dim, num_h[1], adam=ADAM, float32=float32)
+    at2 = attdecoderblock_layer(embed_dim, num_h[2], adam=ADAM, float32=float32)
+    at3 = attdecoderblock_layer(embed_dim, num_h[3], adam=ADAM, float32=float32)
+    at4 = attdecoderblock_layer(embed_dim, num_h[4], adam=ADAM, float32=float32)
+    at5 = attdecoderblock_layer(embed_dim, num_h[5], adam=ADAM, float32=float32)
+    at6 = attdecoderblock_layer(embed_dim, num_h[6], adam=ADAM, float32=float32)
+    at7 = attdecoderblock_layer(embed_dim, num_h[7], adam=ADAM, float32=float32)
+    at8 = attdecoderblock_layer(embed_dim, num_h[8], adam=ADAM, float32=float32)
+    at9 = attdecoderblock_layer(embed_dim, num_h[9], adam=ADAM, float32=float32)
+    at10 = attdecoderblock_layer(embed_dim, num_h[10], adam=ADAM, float32=float32)
+    at11 = attdecoderblock_layer(embed_dim, num_h[11], adam=ADAM, float32=float32)
+    # at12 = attdecoderblock_layer(embed_dim, num_h[12], adam=ADAM, float32=float32)
+    # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM, float32=float32)
 
-    layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
-    # layers += [at0, at1, at2]
+    # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
+    layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11]
+    # layers += [at0, at1, at2, at3, at4, at5, at6]
 
-    norm = layer_norm(embed_dim)
-    cll = gpt_linear_layer(embed_dim, vocab_size, 3)
+    norm = layer_norm(embed_dim, adam=ADAM)
+    # if not cls_token:
+    #     cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token, adam=ADAM, relu=False, float32=float32)
+    # else:
+    cll = fclayer(embed_dim, vocab_size, True, adam=ADAM, float32=float32)
     layers += [norm, cll]
 
     datapath = os.path.join(abspath, 'dataset')
@@ -162,15 +183,17 @@ def transformer_image_train():
         start_epoch = 1
     while alliter < all_steps:
         meanloss = 0
-        if alliter==20*all_steps//30:
-            lr = learning_rate * 0.1
-        elif alliter==26*all_steps//30:
-            lr = learning_rate * 0.1 * 0.1
         jk = 0
         pre_col = []
         while True:
             if alliter > all_steps:
                 break
+            if alliter <= 100:
+                lr = learning_rate * alliter / 100
+            if alliter==23*all_steps//30:
+                lr = learning_rate * 0.1
+            elif alliter==28*all_steps//30:
+                lr = learning_rate * 0.1 * 0.1
             alliter += 1
             jk += 1
             inputs, input_mask, label_single = getinputs(context_length, batchsize, input_texts, char2id, id2char)
@@ -184,57 +207,71 @@ def transformer_image_train():
             ishape = inputs.shape
             inputs = np.reshape(inputs, (-1, vocab_size))
             labels = np.zeros_like(inputs)
-            labels[np.arange(len(inputs)), label_single] = 1
-            # k = np.sum(labels, axis = -1)
+            labels[np.arange(len(inputs)), label_single.reshape(-1)] = 1
             loss, delta, predict = cross_entropy_loss(inputs, labels)
-            
             # loss = loss * batchsize
             # delta = delta * batchsize
-
             delta = np.reshape(delta, ishape)
-            meanloss += loss
-            p = np.argmax(predict, axis=-1)
-            precision = np.sum(label_single==p) / len(label_single)
-            pre_col.append(precision)
-
-            i = alliter * (context_length + 1) // len(input_texts)
-
             
-            inputs, input_mask, label_single = getinputs(context_length, batchsize, input_texts, char2id, id2char)
-            for l in range(len(layers)):
-                if isinstance(layers[l], attdecoderblock_layer):
-                    inputs = layers[l].forward(inputs, input_mask)
-                else:
-                    inputs = layers[l].forward(inputs)
-            ishape = inputs.shape
-            inputs = np.reshape(inputs, (-1, vocab_size))
-            labels = np.zeros_like(inputs)
-            labels[np.arange(len(inputs)), label_single] = 1
-            # k = np.sum(labels, axis = -1)
-            _, _, predict = cross_entropy_loss(inputs, labels)
-            p = np.argmax(predict, axis=-1)
-            valpre = np.sum(label_single==p) / len(label_single)
-            output = ''.join([id2char[int(ij)] for ij in p[:(len(p)//batchsize)]])
-        
-            fpwrite.write("epoch:{}, lr: {:.6f}, loss: {:.6f}, iters: {}, precision: {:.6f}, valpre: {:.6f}\n{}\n". \
-                    format(i, lr, loss, str(jk) +"_"+ str(alliter), precision, valpre, output))
-            fpwrite.flush()
+            # delta = np.zeros_like(inputs)
+            # loss = 0
+            # predict = np.zeros_like(inputs[0])
+            # for ik in range(batchsize):
+            #     labels = np.zeros_like(inputs[ik])
+            #     labels[np.arange(len(inputs[ik])), label_single[ik]] = 1
+            #     losskkk, deltakkk, predictkkk = cross_entropy_loss(inputs[ik], labels)
+            #     delta[ik, :, :] = deltakkk
+            #     loss += losskkk
+            #     predict = np.concatenate([predict, predictkkk], axis = 0)
+            # predict = predict[32*16//2:, :]
+            # delta *= batchsize
+            # loss *= batchsize
             for l in range(len(layers)-1, -1, -1):
                 delta = layers[l].backward(delta)
                 layers[l].update(lr)
                 layers[l].setzero()
-        meanloss /= jk
-        
-        # savemodel
-        allmodel = []
-        for l in layers:
-            k = dir(l)
-            if 'restore_model' in k and 'save_model' in k:
-                allmodel.append(l.save_model())
-        name = f"gpt_poetry_iters{alliter}_"+str(i)+"_loss_"+str(round(meanloss, 6))+".pkl"
 
-        with open(os.path.join(modelpath, name), 'wb') as obj:
-            pickle.dump(allmodel, obj)
+            p = np.argmax(predict, axis=-1)
+            precision = np.sum(label_single.reshape(-1)==p) / len(p)
+            pre_col.append(precision)
+            meanloss += loss
+            i = alliter * (context_length + 1) // len(input_texts)
+            if alliter%30==0:
+                inputs, input_mask, label_single = getinputs(context_length, batchsize, input_texts, char2id, id2char)
+                for l in range(len(layers)):
+                    if isinstance(layers[l], attdecoderblock_layer):
+                        inputs = layers[l].forward(inputs, input_mask)
+                    else:
+                        inputs = layers[l].forward(inputs)
+                ishape = inputs.shape
+                inputs = np.reshape(inputs, (-1, vocab_size))
+                labels = np.zeros_like(inputs)
+                labels[np.arange(len(inputs)), label_single.reshape(-1)] = 1
+                # k = np.sum(labels, axis = -1)
+                _, _, predict = cross_entropy_loss(inputs, labels)
+                p = np.argmax(predict, axis=-1)
+                valpre = np.sum(label_single.reshape(-1)==p) / len(p)
+                output = ''.join([id2char[int(ij)] for ij in p[:(len(p)//batchsize)]]) + "\n"
+            else:
+                output = "\n"
+                valpre = 0
+        
+            fpwrite.write("epoch:{}, lr: {:.6f}, loss: {:.6f}, iters: {}, precision: {:.6f}, valpre: {:.6f}\n{}". \
+                    format(i, lr, loss, str(jk) +"_"+ str(alliter), precision, valpre, output))
+            fpwrite.flush()
+            
+            # savemodel
+            if (alliter + 1) % 100==0:
+                allmodel = []
+                for l in layers:
+                    k = dir(l)
+                    if 'restore_model' in k and 'save_model' in k:
+                        allmodel.append(l.save_model())
+                name = f"gpt_poetry3000_iters{alliter}_"+str(i)+"_loss_"+str(round(meanloss, 6))+".pkl"
+
+                with open(os.path.join(modelpath, name), 'wb') as obj:
+                    pickle.dump(allmodel, obj)
+        meanloss /= jk
 
         fpwrite.write("epoch: {},  {}\n\n".format(i, ''.join(output[:200])))
         fpwrite.flush()

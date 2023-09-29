@@ -140,8 +140,8 @@ class layer_norm(object):
         return [self.gamma, self.beta]
 
     def restore_model(self, models):
-        self.gamma = models[0]
-        self.beta = models[1]
+        self.gamma = models[0].reshape(self.gamma.shape)
+        self.beta = models[1].reshape(self.beta.shape)
 
 def train_single():
     inputs = np.random.rand(2, 3, 60, 60).astype(np.float64)

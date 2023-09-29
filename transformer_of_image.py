@@ -117,7 +117,7 @@ def transformer_image_train(num_classes):
     loss = 999999
     iters = number_image//batchsize + number_image%batchsize
     dot = np.power(0.001, 1/epoch)
-    for i in range(epoch):
+    for i in range(25, epoch):
         meanloss = 0
         # if i!=0:
             # lr = lr * dot
@@ -202,7 +202,7 @@ def transformer_image_train(num_classes):
             k = dir(l)
             if 'restore_model' in k and 'save_model' in k:
                 allmodel.append(l.save_model())
-        name = "epoch_"+str(i+25)+"_loss_"+str(round(meanloss, 6))+"_pre_"+str(round(precision, 6))+"_%s.pkl"%choose
+        name = "epoch_"+str(i)+"_loss_"+str(round(meanloss, 6))+"_pre_"+str(round(precision, 6))+"_%s.pkl"%choose
         
         with open(os.path.join(modelpath, name), 'wb') as obj:
             pickle.dump(allmodel, obj)
@@ -217,7 +217,7 @@ def transformer_image_train(num_classes):
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_60_loss_0.092195_pre_0 .981__pf_pn_fixed.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_24_loss_0.211765_pre_0.937__pf_pn_fixed.pkl'
     logdir = os.path.join(savepath, 'log')
     os.makedirs(logdir, exist_ok=True)
     transformer_image_train(10)

@@ -4,17 +4,17 @@ from net.fullconnect import fclayer
 from net.activation import ReLU
 
 class classify_layer():
-    def __init__(self, embed_dim, batch, n_patch, num_classes, cls_token = True, adam=False, relu=True):
+    def __init__(self, embed_dim, batch, n_patch, num_classes, cls_token = True, adam=False, relu=True, float32=False):
         self.batch = batch
         self.embed_dim = embed_dim
         self.n_patch = n_patch
         self.cls_token = cls_token
         if cls_token:
-            self.fc0 = fclayer(self.embed_dim, self.embed_dim, True, adam=adam)
+            self.fc0 = fclayer(self.embed_dim, self.embed_dim, True, adam=adam, float32=float32)
         else:
-            self.fc0 = fclayer(self.embed_dim * (n_patch**2), self.embed_dim, True, adam=adam)
+            self.fc0 = fclayer(self.embed_dim * (n_patch**2), self.embed_dim, True, adam=adam, float32=float32)
         self.relu    = ReLU()
-        self.fc1 = fclayer(self.embed_dim, num_classes, True, adam=adam)
+        self.fc1 = fclayer(self.embed_dim, num_classes, True, adam=adam, float32=float32)
         self.reluact = relu
 
     def forward(self, inputs):

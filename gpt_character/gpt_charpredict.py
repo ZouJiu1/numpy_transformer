@@ -71,8 +71,6 @@ def predict():
         ret.append(''.join(output[:200]))
     return ret
 
-
-
 if __name__ =="__main__":
     savepath = abspath
     pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\gpt_character\model\gpt_english_epoch_10000_loss_0.09217.pkl'

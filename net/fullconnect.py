@@ -33,34 +33,55 @@ def torch_compare_fc(infeature, outfeature, bias, inputs, params, bias_params):
     return output, k, grad_params, grad_bias
 
 class fclayer(object):
-    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], adam = False, name='', init = ''):
+    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], adam = False, float32=False, name='', init = ''):
         self.infeature = infeature
         self.outfeature = outfeature
         self.bias = bias
+        self.float32 = float32
         if list(params)!=[]:
             self.params = params
         else:
             ranges = np.sqrt(1 / infeature)
             self.params = np.random.uniform(-ranges, ranges, (infeature, outfeature))
+            if self.float32:
+                self.params = self.params.astype(np.float32)
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
             ranges = np.sqrt(1 / infeature )
             self.bias_params = np.random.uniform(-ranges, ranges, (outfeature))
+            if self.float32:
+                self.bias_params = self.bias_params.astype(np.float32)
         self.params_delta = np.zeros((infeature, outfeature))
+        if self.float32:
+            self.params_delta = self.params_delta.astype(np.float32)
         self.bias_delta = np.zeros(outfeature)
+        if self.float32:
+            self.bias_delta = self.bias_delta.astype(np.float32)
         self.adam = adam
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.epsadam = 10**(2-10)
-        self.moment_p = np.zeros_like(self.params)
-        self.rmsprop_p = np.zeros_like(self.params)
+        if self.float32:
+            self.moment_p = np.zeros_like(self.params, dtype=np.float32)
+        else:
+            self.moment_p = np.zeros_like(self.params)
+        if self.float32:
+            self.rmsprop_p = np.zeros_like(self.params, dtype=np.float32)
+        else:
+            self.rmsprop_p = np.zeros_like(self.params)
         if bias:
             self.moment_b = np.zeros_like(self.bias_params)
+            if self.float32:
+                self.moment_b = self.moment_b.astype(np.float32)
             self.rmsprop_b = np.zeros_like(self.bias_params)
+            if self.float32:
+                self.rmsprop_b = self.rmsprop_b.astype(np.float32)
         self.t = 1
-        
+    
     def forward(self, inputs):
+        if self.float32:
+            inputs = inputs.astype(np.float32)
         self.inputs = inputs
         output = np.matmul(inputs, self.params)
         if self.bias:
@@ -68,6 +89,10 @@ class fclayer(object):
         return output
     
     def backward(self, delta, inputs=[]):
+        if self.float32:
+            delta = delta.astype(np.float32)
+            if len(inputs):
+                inputs = inputs.astype(np.float32)
         #previous layer delta
         input_delta = np.matmul(delta, self.params.T)
         if len(inputs)==0:
@@ -111,11 +136,15 @@ class fclayer(object):
                 self.bias_params -= self.bias_delta * lr
 
     def save_model(self):
-        return [self.params, self.bias_params]
+        if self.bias:
+            return [self.params, self.bias_params]
+        else:
+            return [self.params]
 
     def restore_model(self, models):
-        self.params = models[0]
-        self.bias_params = models[1]
+        self.params = models[0].reshape(self.params.shape)
+        if self.bias:
+            self.bias_params = models[1].reshape(self.bias_params.shape)
 
     def __name__(self):
         return "fclayer"

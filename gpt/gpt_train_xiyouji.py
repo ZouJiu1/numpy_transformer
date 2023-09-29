@@ -13,9 +13,11 @@ from PatchEmbed import Position_Embedding
 from attdecoderblock import attdecoderblock_layer
 from net.layernorm import layer_norm
 from net.fullconnect import fclayer
+from gpt.gpt_linear import gpt_linear_layer
 import re
 from classify import classify_layer
 from net.flatten import flatten_layer
+
 from copy import deepcopy
 import json
 
@@ -26,8 +28,10 @@ import json
 def getdata():
     dataset = os.path.join(abspath, 'dataset')
     os.makedirs(dataset, exist_ok=True)
-    id2char_char2id = os.path.join(abspath, 'dataset', r"George_Orwell.json")
-    inpath = os.path.join(abspath, 'dataset', r"George_Orwell.txt")           # origin
+    id2char_char2id = os.path.join(abspath, 'dataset', r"gptxiyouji.json")
+    # inpath = os.path.join(abspath, 'dataset', r"train_10000.txt")
+    
+    inpath = r'C:\Users\10696\Desktop\access\numpy_transformer\dataset\xiyouji_wuchengen.txt'
     with open(inpath, 'r', encoding='utf-8') as obj:
         readcontent = obj.read()
     kk = [i if i!='\n' else " " for i in readcontent]
@@ -35,6 +39,13 @@ def getdata():
     kk = re.sub(r'   ', " ", kk)
     kk = re.sub(r'  ', " ", kk)
     kk = list(kk)
+    # inpath = os.path.join(abspath, 'dataset', r"train_token_1000.txt")
+    # with open(inpath, 'r', encoding='utf-8') as obj:
+    #     for i in obj.readlines():
+    #         kk.extend(i.strip().split(" "))
+
+    while '□' in kk:
+        kk.remove("□")
     unique = np.unique(kk)
     length = len(unique)
     id2char = {i:char for i, char in enumerate(unique)}
@@ -102,54 +113,48 @@ def getinputs(context_length, batchsize, input_texts, char2id, id2char):
 def transformer_image_train():
     vocab_size, id2char, char2id, input_texts = getdata()
 
-    # all_steps = 6000 - 1000 + 10000
-    # batchsize = 10 #63+1
-    # learning_rate = 0.0003 #/ batchsize
-    # embed_dim = vocab_size if vocab_size%3==0 else (vocab_size + 2)//3 # 192
-    # num_layer = 10 + 1 + 1
-    # num_h = [3] * num_layer
-    # context_length = 30 # 260 - 2*2
-    
     all_steps = 6000 - 1000
     batchsize = 63 + 1
     learning_rate = 0.003                         #   batchsize
-    embed_dim = 192 # vocab_size//3
+    embed_dim = 192 #vocab_size if vocab_size%3==0 else (vocab_size//3) * 3 + 3 # 192
     num_layer = 10 + 1 + 1
     num_h = [3] * num_layer
     context_length = 260 - 2*2
 
     ADAM = True
     cls_token = True
+    float32 = True
 
-    logfile = os.path.join(logdir, 'log_gpt_english.txt')
+    logfile = os.path.join(logdir, 'log_gpt_xiyouji.txt')
     fpwrite = open(logfile, 'w', encoding='utf-8')
 
     patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM)
     layers = [patchemb]
     
-    at0 = attdecoderblock_layer(embed_dim, num_h[0], adam=ADAM)
-    at1 = attdecoderblock_layer(embed_dim, num_h[1], adam=ADAM)
-    at2 = attdecoderblock_layer(embed_dim, num_h[2], adam=ADAM)
-    at3 = attdecoderblock_layer(embed_dim, num_h[3], adam=ADAM)
-    at4 = attdecoderblock_layer(embed_dim, num_h[4], adam=ADAM)
-    at5 = attdecoderblock_layer(embed_dim, num_h[5], adam=ADAM)
-    at6 = attdecoderblock_layer(embed_dim, num_h[6], adam=ADAM)
-    at7 = attdecoderblock_layer(embed_dim, num_h[7], adam=ADAM)
-    at8 = attdecoderblock_layer(embed_dim, num_h[8], adam=ADAM)
-    at9 = attdecoderblock_layer(embed_dim, num_h[9], adam=ADAM)
-    at10 = attdecoderblock_layer(embed_dim, num_h[10], adam=ADAM)
-    at11 = attdecoderblock_layer(embed_dim, num_h[11], adam=ADAM)
-    # at12 = attdecoderblock_layer(embed_dim, num_h[12], adam=ADAM)
-    # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM)
+    at0 = attdecoderblock_layer(embed_dim, num_h[0], adam=ADAM, float32=float32)
+    at1 = attdecoderblock_layer(embed_dim, num_h[1], adam=ADAM, float32=float32)
+    at2 = attdecoderblock_layer(embed_dim, num_h[2], adam=ADAM, float32=float32)
+    at3 = attdecoderblock_layer(embed_dim, num_h[3], adam=ADAM, float32=float32)
+    at4 = attdecoderblock_layer(embed_dim, num_h[4], adam=ADAM, float32=float32)
+    at5 = attdecoderblock_layer(embed_dim, num_h[5], adam=ADAM, float32=float32)
+    at6 = attdecoderblock_layer(embed_dim, num_h[6], adam=ADAM, float32=float32)
+    at7 = attdecoderblock_layer(embed_dim, num_h[7], adam=ADAM, float32=float32)
+    at8 = attdecoderblock_layer(embed_dim, num_h[8], adam=ADAM, float32=float32)
+    at9 = attdecoderblock_layer(embed_dim, num_h[9], adam=ADAM, float32=float32)
+    at10 = attdecoderblock_layer(embed_dim, num_h[10], adam=ADAM, float32=float32)
+    at11 = attdecoderblock_layer(embed_dim, num_h[11], adam=ADAM, float32=float32)
+    # at12 = attdecoderblock_layer(embed_dim, num_h[12], adam=ADAM, float32=float32)
+    # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM, float32=float32)
 
     # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
     layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11]
+    # layers += [at0, at1, at2, at3, at4, at5, at6]
 
     norm = layer_norm(embed_dim, adam=ADAM)
-    if not cls_token:
-        cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token, adam=ADAM, relu=False)
-    else:
-        cll = fclayer(embed_dim, vocab_size, True, adam=ADAM)
+    # if not cls_token:
+    #     cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token, adam=ADAM, relu=False, float32=float32)
+    # else:
+    cll = fclayer(embed_dim, vocab_size, True, adam=ADAM, float32=float32)
     layers += [norm, cll]
 
     datapath = os.path.join(abspath, 'dataset')
@@ -168,7 +173,7 @@ def transformer_image_train():
                 cnt += 1
         del models
 
-    alliter = 200
+    alliter = 100
     lr = learning_rate
     start_epoch = 1
     try:
@@ -231,7 +236,7 @@ def transformer_image_train():
             pre_col.append(precision)
             meanloss += loss
             i = alliter * (context_length + 1) // len(input_texts)
-            if alliter%10==0:
+            if alliter%30==0:
                 inputs, input_mask, label_single = getinputs(context_length, batchsize, input_texts, char2id, id2char)
                 for l in range(len(layers)):
                     if isinstance(layers[l], attdecoderblock_layer):
@@ -254,7 +259,7 @@ def transformer_image_train():
             fpwrite.write("epoch:{}, lr: {:.6f}, loss: {:.6f}, iters: {}, precision: {:.6f}, valpre: {:.6f}\n{}". \
                     format(i, lr, loss, str(jk) +"_"+ str(alliter), precision, valpre, output))
             fpwrite.flush()
-
+            
             # savemodel
             if (alliter + 1) % 100==0:
                 allmodel = []
@@ -262,11 +267,10 @@ def transformer_image_train():
                     k = dir(l)
                     if 'restore_model' in k and 'save_model' in k:
                         allmodel.append(l.save_model())
-                name = f"gpt_english_iters{alliter}_"+str(i)+"_loss_"+str(round(meanloss, alliter))+".pkl"
+                name = f"gpt_xiyouji_iters{alliter}_"+str(i)+"_loss_"+str(round(meanloss, 6))+".pkl"
 
                 with open(os.path.join(modelpath, name), 'wb') as obj:
                     pickle.dump(allmodel, obj)
-
         meanloss /= jk
 
         fpwrite.write("epoch: {},  {}\n\n".format(i, ''.join(output[:200])))
@@ -275,7 +279,7 @@ def transformer_image_train():
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\gpt_english_iters199_0_loss_513.4024551860696.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\gpt_xiyouji_iters999_0_loss_736.060058.pkl'
     logdir = os.path.join(savepath, 'gpt', 'log')
     os.makedirs(logdir, exist_ok=True)
     transformer_image_train()

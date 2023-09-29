@@ -11,18 +11,18 @@ from net.fullconnect import fclayer
 from net.activation import Softmax, GELU, ReLU
 
 class attdecoderblock_layer():
-    def __init__(self, embed_dim, num_h, adam=False):
+    def __init__(self, embed_dim, num_h, adam=False, float32 = False):
         self.embed_dim = embed_dim
         self.num_h = num_h
         self.len_single =  embed_dim // num_h
 
         self.norm = layer_norm(self.embed_dim, adam=adam)
         self.norm1 = layer_norm(self.embed_dim, adam=adam)
-        self.qkvfc = fclayer(self.embed_dim, self.len_single * num_h * 3, True, adam=adam)
+        self.qkvfc = fclayer(self.embed_dim, self.len_single * num_h * 3, True, adam=adam, float32=float32)
         
-        self.fc0 = fclayer(self.embed_dim, self.embed_dim * (2*2), True, adam=adam)
-        self.fc1 = fclayer(self.embed_dim * (2*2), self.embed_dim, True, adam=adam)
-        self.fc_out = fclayer(self.embed_dim, self.embed_dim, True, adam=adam)
+        self.fc0 = fclayer(self.embed_dim, self.embed_dim * (2*2), True, adam=adam, float32=float32)
+        self.fc1 = fclayer(self.embed_dim * (2*2), self.embed_dim, True, adam=adam, float32=float32)
+        self.fc_out = fclayer(self.embed_dim, self.embed_dim, True, adam=adam, float32=float32)
         self.softmax = Softmax()
         self.relu = ReLU()
         self.adam = adam

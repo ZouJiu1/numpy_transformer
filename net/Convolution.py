@@ -234,11 +234,15 @@ class convolution_layer(object):
             self.bias_params   -= self.bias_delta * lr
 
     def save_model(self):
-        return [self.params, self.bias_params]
+        if self.bias:
+            return [self.params, self.bias_params]
+        else:
+            return [self.params]
 
     def restore_model(self, models):
-        self.params = models[0]
-        self.bias_params = models[1]
+        self.params = models[0].reshape(self.params.shape)
+        if self.bias:
+            self.bias_params = models[1].reshape(self.bias_params.shape)
 
     def __name__(self):
         return "convolution_layer"
