@@ -50,7 +50,7 @@ train in MacBook Pro 2020 Intel
 | 9 | 0.9544103072348861 |
 | all precision | 0.972 |
 
-## gpt poetry3000 with the numpy
+## the gpt poetry3000 with the numpy
 train precision is 96%, you can find it in the file log_gpt_poetry3000.txt.
 
 ##### train
