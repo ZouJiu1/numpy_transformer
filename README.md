@@ -23,13 +23,13 @@ Training it with MNIST dataset, **it’s precision can reach to 97.2%**, it's se
 this codes provide functions to save model and restore model to train<br>
 you can find those models in model dir<br><br>
 Train with command<br>
-```
+```Bash []
 python transformer_of_image.py
 ```
 
 ### predict
 
-```
+```Bash []
 python predict.py
 ```
 
@@ -54,13 +54,13 @@ train in MacBook Pro 2020 Intel
 train precision is 96%, you can find it in the file log_gpt_poetry3000.txt.
 
 ##### train
-```
+```Bash []
 python gpt_train_potry3000.py
 ```
 
 ##### run 
 the predict model is the gpt_poetry3000_iters1999_1_loss_3259.634242.pkl
-```
+```Bash []
 python gpt_predict_poetrythree.py
 ```
 
@@ -75,6 +75,11 @@ those attentions are extracted from the first attention block $\text{Softmax}\le
 
 山高江水深
 <img src="./dataset/sgjss.png" width="66%"/>
+
+usage:
+```Bash []
+python gpt\show_attention.py
+```
 
 ##### blogs 
 [https://zhuanlan.zhihu.com/p/659018819 numpy实现GPT的decoder来产生旧诗词的](https://zhuanlan.zhihu.com/p/659018819)
@@ -134,7 +139,7 @@ those attentions are extracted from the first attention block $\text{Softmax}\le
 in directory `gpt_character`
 
 **Train and predict**
-```
+```Bash []
 python gpt_character\gpt_train_english_char.py
 python gpt_character\gpt_charpredict.py
 ```
