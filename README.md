@@ -63,6 +63,19 @@ the predict model is the gpt_poetry3000_iters1999_1_loss_3259.634242.pkl
 ```
 python gpt_predict_poetrythree.py
 ```
+
+#### show attention
+those attentions are extracted from the first attention block $\text{Softmax}\left(\frac{Q\cdot K^T}{\sqrt{d_i}}\right)$，the first row is $\text{Softmax}\left(\frac{Q\cdot K^T}{\sqrt{d_i}}\right)$, the second row is $\frac{Q\cdot K^T}{\sqrt{d_i}}$ without softmax.
+
+床前明月光
+<img src="./dataset/cqmyg.png" width="66%"/> 
+
+满树桃花映日开
+<img src="./dataset/msthyrk.png" width="66%"/>
+
+山高江水深
+<img src="./dataset/sgjss.png" width="66%"/>
+
 ##### blogs 
 [https://zhuanlan.zhihu.com/p/659018819 numpy实现GPT的decoder来产生旧诗词的](https://zhuanlan.zhihu.com/p/659018819)
 

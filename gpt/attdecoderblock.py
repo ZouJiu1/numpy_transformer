@@ -11,7 +11,7 @@ from net.fullconnect import fclayer
 from net.activation import Softmax, GELU, ReLU
 
 class attdecoderblock_layer():
-    def __init__(self, embed_dim, num_h, adam=False, float32 = False):
+    def __init__(self, embed_dim, num_h, adam=False, float32 = False, return_attention = False):
         self.embed_dim = embed_dim
         self.num_h = num_h
         self.len_single =  embed_dim // num_h
@@ -26,6 +26,7 @@ class attdecoderblock_layer():
         self.softmax = Softmax()
         self.relu = ReLU()
         self.adam = adam
+        self.return_attention = return_attention
     
     def forward(self, inputs, masks = []):
         self.masks = masks
@@ -47,6 +48,7 @@ class attdecoderblock_layer():
         self.block = block
         self.qkv = qkv
         self.atg__ = [[[] for j in range(self.num_h)] for i in range(batch)]
+        self.att_col = [[[] for j in range(self.num_h)] for i in range(batch)]
         for n in range(batch):
             tmp = []
             for i in range(self.num_h):
@@ -54,6 +56,8 @@ class attdecoderblock_layer():
                 nik = qkv[n, :, 1, i]
                 niv = qkv[n, :, 2, i]
                 att = np.matmul(niq, nik.T) / np.sqrt(self.len_single)
+                if self.return_attention:
+                    self.att_col[n][i] = att
                 if len(masks) > 0:
                     att = att + masks
                 atg__ = self.softmax.forward(att, axis=-1)
@@ -66,6 +70,8 @@ class attdecoderblock_layer():
 
         self.out1 = self.fc_out.forward(self.rkk)
         input1 = self.out6 + self.out1
+        if self.return_attention:
+            return self.atg__, self.att_col
         return input1
 
     def backward(self, delta):
