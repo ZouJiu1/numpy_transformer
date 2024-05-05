@@ -141,6 +141,8 @@ python gpt\show_attention.py
 ## gpt character numpy
 in directory `gpt_character`
 
+just 100 steps training, it will merge.
+
 **Train and predict**
 ```Bash []
 python gpt_character\gpt_train_english_char.py
@@ -149,20 +151,15 @@ python gpt_character\gpt_charpredict.py
 
 **Result**
 ```
-'m: nopqrstuv',
-'p: qrstuvwxy',
-'w: xyz abcde',
-'w: xyz abcde',
-'x: yz abcdef',
-'f: ghijklmno',
-'t: uvwxyz ab',
-'p: qrstuvwxy',
-'y: z abcdefg',
-'w: xyz abcde'
+'cdefg: cdefghijklmnopqrstuvwxyzabcdefghijk',
 ```
 
 ## blogs
 [numpy实现VIT vision transformer在MNIST-https://zhuanlan.zhihu.com/p/645326689](https://zhuanlan.zhihu.com/p/645326689)<br>
+
+[transformer网络内attention使用的multi-head](https://zhuanlan.zhihu.com/p/695771281)
+
+[transformer网络内attention使用的mask](https://zhuanlan.zhihu.com/p/645442074?)
 
 
 总共实现了这几个层：
