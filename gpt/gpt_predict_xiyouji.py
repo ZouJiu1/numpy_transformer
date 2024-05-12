@@ -8,18 +8,19 @@ sys.path.append(abspath)
 from net.loss import cross_entropy_loss
 import numpy as np
 import pickle
+import torch
+from copy import deepcopy
+import json
 from net.layernorm import layer_norm
-from PatchEmbed import Position_Embedding
 from attention import attention_layer
+from PatchEmbed import Position_Embedding
 from attdecoderblock import attdecoderblock_layer
 from gpt.gpt_linear import gpt_linear_layer
-from gpt.gpt_train import getdata, create_masks_future
+from gpt.gpt_train_xiyouji import getdata, create_masks_future, getinputs
 from net.layernorm import layer_norm
 from net.fullconnect import fclayer
 from classify import classify_layer
-
-from copy import deepcopy
-import json
+from net.flatten import flatten_layer
 
 def predict():
     vocab_size, id2char, char2id, input_texts = getdata()
@@ -27,13 +28,24 @@ def predict():
     all_steps = 6000 - 1000
     batchsize = 63 + 1
     learning_rate = 0.0003                         #   batchsize
-    embed_dim = 192 #vocab_size if vocab_size%3==0 else (vocab_size//3) * 3 + 3 # 192
+    embed_dim = 192*2  # vocab_size if vocab_size%3==0 else (vocab_size//3) * 3 + 3 # 192
     num_layer = 10 + 1 + 1
-    num_h = [3] * num_layer
-    context_length = 260 - 2*2
+    num_h = [3*2] * num_layer
+    context_length = 256
+
+    inputid = [0]
+    character = list(r''',.? !;、，。？！；''')
+    for i in range(1, len(input_texts)):
+        if input_texts[i - 1] in character:
+            inputid.append(i)
+    inputid = np.array(inputid, dtype = np.int64)
+    while inputid[-1] + context_length + 1 > len(input_texts):
+        inputid = inputid[:-1]
 
     ADAM = False
     cls_token = True
+    single_word = False
+    float32 = True
     
     patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM)
     layers = [patchemb]
@@ -54,14 +66,17 @@ def predict():
     # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM)
 
     # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
-    layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11]
+    layers += [at0]#, at1, at2, at3, at4, at5]#, at6, at7, at8, at9, at10, at11]
 
     norm = layer_norm(embed_dim, adam=ADAM)
-    if not cls_token:
-        cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token, adam=ADAM, relu=False)
+    flatten     = flatten_layer()
+    # if not cls_token:
+    if not single_word:
+        cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32)
+        layers += [norm, cll]
     else:
-        cll = fclayer(embed_dim, vocab_size, True, adam=ADAM)
-    layers += [norm, cll]
+        cll = classify_layer(embed_dim, batchsize, np.sqrt(context_length), vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32)
+        layers += [norm, flatten, cll]
 
     if os.path.exists(pretrained_model):
         with open(pretrained_model, 'rb') as obj:
@@ -73,37 +88,54 @@ def predict():
                 l.restore_model(models[cnt])
                 cnt += 1
         del models
-    
-    inputs = r'行者自门瑕处钻将进去，飞过二层门里，只见正当中花亭子上端坐着一个女怪，'
-    inputs = [char2id[ci] for ci in inputs]
-    inputs = np.array([inputs])
-    # inputs = np.random.randint(0, vocab_size, (1, 1))
-    output = deepcopy(inputs)
-    for ij in range(context_length - 1):
-        text = deepcopy(inputs)
-        input_mask_fut = create_masks_future(inputs)
-        for l in range(len(layers)):
-            if isinstance(layers[l], attdecoderblock_layer):
-                inputs = layers[l].forward(inputs, input_mask_fut)
-            else:
-                inputs = layers[l].forward(inputs)
-        inputs = np.reshape(inputs, (-1, vocab_size))[-1, :]
-        out = inputs - np.max(inputs, axis = -1, keepdims = True)  # avoid too large in exp 
-        softmax = np.exp(out) / np.sum(np.exp(out), axis = -1, keepdims = True)
-        
-        # rng1 = np.random.default_rng()
-        # out = rng1.multinomial(1, softmax, 1).argmax()   ## 投掷一次骰子的
 
-        out = np.argmax(softmax)
-
-        out = np.expand_dims(out, (0))
-        output = np.concatenate([output, np.array([out])], axis = -1)
-        inputs = output.copy()
-        if output.shape[1] >= context_length:
-            break
-
-    output = [id2char[int(ij)] for ij in output[0]]
-    return ''.join(output)
+    num_sample = 2
+    example = []
+    start_length = 60
+    for _ in range(num_sample):
+        inputs, input_mask, label_single, id_start = getinputs(inputid, start_length, 1, input_texts, char2id, id2char)
+        out = list(inputs.reshape(-1))
+        for ij in range(context_length * 2):
+            input_mask = create_masks_future(inputs)
+            for l in range(len(layers)):
+                if isinstance(layers[l], attdecoderblock_layer):
+                    inputs = layers[l].forward(inputs, input_mask)
+                else:
+                    inputs = layers[l].forward(inputs)
+            inputs = np.reshape(inputs, (-1, vocab_size))
+            p_shift = inputs - np.max(inputs, axis = -1)[..., np.newaxis]   # avoid too large in exp 
+            predict = np.exp(p_shift) / np.sum(np.exp(p_shift), axis = -1)[:, np.newaxis]
+            # p = np.argmax(predict, axis=-1).reshape(-1)
+            p = torch.multinomial(torch.from_numpy(predict), 1).cpu().numpy().flatten()
+            out.append(p[-1])
+            inputs = np.array(out[-context_length:])[np.newaxis, :]
+        output = ''.join([id2char[int(ij)] for ij in out]) + "\n"
+        example.append(output)
+    character = list(r''',.? !;、，。？！；''')
+    file_path = os.path.join(abspath, 'gpt', 'model', 'example_english.txt')
+    file = open(file_path, "w")
+    fileshow = ""
+    for i, sample in enumerate(example):
+        file.write(f"################ SAMPLE { i + 1 } ################\n SAMPLE {i+1} INPUT: ")
+        ln = 0
+        for j in range(len(sample)):
+            if j <= start_length - 2:
+                file.write(sample[j])
+                fileshow += sample[j]
+                continue
+            elif j == start_length-1:
+                file.write(sample[i] + '\n\n\n Model Output: ')
+                fileshow += sample[i] + '\n\n\n Model Output: '
+                continue
+            if ln < 60 and ln > 50 and sample[j] == ' ':
+                file.write('\n ')
+                fileshow += "\n "
+                ln = 0
+            file.write(sample[j])
+            fileshow += sample[j]
+            ln += 1
+        # file.write("".join(sample))
+        file.write("\n\n\n")
 
 '''
 https://numpy.org/doc/stable/reference/random/generated/numpy.random.multinomial.html#numpy.random.multinomial
@@ -121,7 +153,5 @@ array([[3, 4, 3, 3, 4, 3], # random
 For the first run, we threw 3 times 1, 4 times 2, etc. For the second, we threw 2 times 1, 4 times 2, etc.
 '''
 if __name__ =="__main__":
-    savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\gpt\model\gpt_xiyouji_iters799_0_loss_1199.450201.pkl'
+    pretrained_model = os.path.join(abspath, r'gpt', r'model', r'gpt_xiyouji_last.pkl')
     output = predict()
-    output

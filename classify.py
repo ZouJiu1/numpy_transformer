@@ -12,7 +12,7 @@ class classify_layer():
         if cls_token:
             self.fc0 = fclayer(self.embed_dim, self.embed_dim, True, adam=adam, float32=float32)
         else:
-            self.fc0 = fclayer(self.embed_dim * (n_patch**2), self.embed_dim, True, adam=adam, float32=float32)
+            self.fc0 = fclayer(self.embed_dim * int(n_patch**2), self.embed_dim, True, adam=adam, float32=float32)
         self.relu    = ReLU()
         self.fc1 = fclayer(self.embed_dim, num_classes, True, adam=adam, float32=float32)
         self.reluact = relu

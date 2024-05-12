@@ -125,8 +125,8 @@ class Position_Embedding(Embedding_layer):
     def __init__(self, context_length, vocab_size,  embed_dim, adam = False):
         self.context_length = context_length
         self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim, adam = adam)
-        self.pos_embedding  = Position_Fixed(context_length, embed_dim)
-        # self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim, adam = adam)
+        # self.pos_embedding  = Position_Fixed(context_length, embed_dim)
+        self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim, adam = adam)
         self.adam = adam
 
     def forward(self, inputs):
