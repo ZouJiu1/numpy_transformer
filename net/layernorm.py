@@ -37,7 +37,7 @@ def torch_compare_layernorm(normalized_shape, inputs, gamma, beta, elementwise_a
     return output, k, grad_gamma, grad_beta
 
 class layer_norm(object):
-    def __init__(self, normalized_shape, elementwise_affine = True, gamma = [], beta = [], adam = False):
+    def __init__(self, normalized_shape, elementwise_affine = True, gamma = [], beta = [], adam = False, float32=False, float16=False):
         if isinstance(normalized_shape, int):
             normalized_shape = [normalized_shape]
         self.axis = None
@@ -53,6 +53,16 @@ class layer_norm(object):
 
         self.gamma_delta = np.zeros(normalized_shape).astype(np.float64)
         self.beta_delta = np.zeros(normalized_shape).astype(np.float64)
+        if float32:
+            self.gamma_delta = self.gamma_delta.astype(np.float32)
+            self.beta_delta = self.beta_delta.astype(np.float32)
+            self.gamma = self.gamma.astype(np.float32)
+            self.beta = self.beta.astype(np.float32)
+        if float16:
+            self.gamma_delta = self.gamma_delta.astype(np.float16)
+            self.beta_delta = self.beta_delta.astype(np.float16)
+            self.gamma = self.gamma.astype(np.float16)
+            self.beta = self.beta.astype(np.float16)
         self.adam = adam
         self.beta1 = 0.9
         self.beta2 = 0.999
@@ -62,6 +72,16 @@ class layer_norm(object):
             self.rmsprop_g = np.zeros_like(self.gamma)
             self.moment_b = np.zeros_like(self.beta)
             self.rmsprop_b = np.zeros_like(self.beta)
+            if float32:
+                self.moment_g = self.moment_g.astype(np.float32)
+                self.rmsprop_g = self.rmsprop_g.astype(np.float32)
+                self.moment_b = self.moment_b.astype(np.float32)
+                self.rmsprop_b = self.rmsprop_b.astype(np.float32)
+            if float16:
+                self.moment_g = self.moment_g.astype(np.float16)
+                self.rmsprop_g = self.rmsprop_g.astype(np.float16)
+                self.moment_b = self.moment_b.astype(np.float16)
+                self.rmsprop_b = self.rmsprop_b.astype(np.float16)
         self.t = 1
         self.ep = 1e-5
 

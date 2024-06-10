@@ -172,7 +172,7 @@ def transformer_image_train():
     float32 = True
 
     logfile = os.path.join(logdir, 'log_gpt_english.txt')
-    fpwrite = open(logfile, 'w', encoding='utf-8')
+    fpwrite = open(logfile, 'a+', encoding='utf-8')
 
     patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM)
     layers = [patchemb]
@@ -193,7 +193,7 @@ def transformer_image_train():
     # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM)
 
     # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
-    layers += [at0] #, at1, at2, at3, at4, at5]#, at6, at7, at8, at9, at10, at11]
+    layers += [at0, at1] #, at2, at3, at4, at5]#, at6, at7, at8, at9, at10, at11]
 
     norm = layer_norm(embed_dim, adam=ADAM)
     flatten     = flatten_layer()
@@ -223,10 +223,16 @@ def transformer_image_train():
                 try:
                     l.restore_model(models[cnt])
                 except:
+                    jk = 0
+                    l.restore_model(models[cnt-1])
                     continue
                 cnt += 1
         del models
-    savename = savename.replace(".pkl", "%d.pkl"%num_attention)
+    else:
+        exit(-1)
+
+    nam = savename.split('last')[0] + 'last'
+    savename = nam + "%d.pkl"%num_attention
 
     lr = learning_rate
     try:
@@ -366,7 +372,7 @@ def savemodel(layers, jk):
 
 if __name__ =="__main__":
     single_word = False
-    savename = f"gpt_english_last.pkl"
+    savename = f"gpt_english_last1.pkl"
     modelpath = os.path.join(abspath, 'gpt', 'model')
     os.makedirs(modelpath, exist_ok=True)
     pretrained_model = os.path.join(abspath, 'gpt', 'model', savename)

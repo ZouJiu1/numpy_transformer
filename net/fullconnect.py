@@ -33,7 +33,7 @@ def torch_compare_fc(infeature, outfeature, bias, inputs, params, bias_params):
     return output, k, grad_params, grad_bias
 
 class fclayer(object):
-    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], adam = False, float32=False, name='', init = ''):
+    def __init__(self, infeature, outfeature, bias=False, params=[], bias_params=[], adam = False, float32=False, float16 = False, name='', init = ''):
         self.infeature = infeature
         self.outfeature = outfeature
         self.bias = bias
@@ -45,6 +45,8 @@ class fclayer(object):
             self.params = np.random.uniform(-ranges, ranges, (infeature, outfeature))
             if self.float32:
                 self.params = self.params.astype(np.float32)
+            if float16:
+                self.params = self.params.astype(np.float16)
         if bias and list(bias_params)!=[]:
             self.bias_params = bias_params
         else:
@@ -52,31 +54,46 @@ class fclayer(object):
             self.bias_params = np.random.uniform(-ranges, ranges, (outfeature))
             if self.float32:
                 self.bias_params = self.bias_params.astype(np.float32)
+            if float16:
+                self.bias_params = self.bias_params.astype(np.float16)
         self.params_delta = np.zeros((infeature, outfeature))
         if self.float32:
             self.params_delta = self.params_delta.astype(np.float32)
+        if float16:
+            self.params_delta = self.params_delta.astype(np.float16)
         self.bias_delta = np.zeros(outfeature)
         if self.float32:
             self.bias_delta = self.bias_delta.astype(np.float32)
+        if float16:
+            self.bias_delta = self.bias_delta.astype(np.float16)
+        
         self.adam = adam
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.epsadam = 10**(2-10)
         if self.float32:
             self.moment_p = np.zeros_like(self.params, dtype=np.float32)
+        elif float16:
+            self.moment_p = np.zeros_like(self.params, dtype=np.float16)
         else:
             self.moment_p = np.zeros_like(self.params)
         if self.float32:
             self.rmsprop_p = np.zeros_like(self.params, dtype=np.float32)
+        elif float16:
+            self.rmsprop_p = np.zeros_like(self.params, dtype=np.float16)
         else:
             self.rmsprop_p = np.zeros_like(self.params)
         if bias:
             self.moment_b = np.zeros_like(self.bias_params)
             if self.float32:
                 self.moment_b = self.moment_b.astype(np.float32)
+            elif float16:
+                self.moment_b = self.moment_b.astype(np.float16)
             self.rmsprop_b = np.zeros_like(self.bias_params)
             if self.float32:
                 self.rmsprop_b = self.rmsprop_b.astype(np.float32)
+            elif float16:
+                self.rmsprop_b = self.rmsprop_b.astype(np.float16)
         self.t = 1
     
     def forward(self, inputs):

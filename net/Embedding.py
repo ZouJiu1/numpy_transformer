@@ -23,7 +23,7 @@ def torch_compare_Embedding(num_embeddings, embedding_dim, delta, inputs, params
     return output, grad_params, params_aft
 
 class Embedding_layer(object):
-    def __init__(self, num_embeddings, embedding_dim, params=[], adam = False):
+    def __init__(self, num_embeddings, embedding_dim, params=[], adam = False, float32=False, float16=False):
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if list(params)!=[]:
@@ -37,6 +37,14 @@ class Embedding_layer(object):
         self.epsadam = 10**(2-10)
         self.moment_p = np.zeros_like(self.params)
         self.rmsprop_p = np.zeros_like(self.params)
+        if float32:
+            self.moment_p = self.moment_p.astype(np.float32)
+            self.rmsprop_p = self.rmsprop_p.astype(np.float32)
+            self.params = self.params.astype(np.float32)
+        elif float16:
+            self.moment_p = self.moment_p.astype(np.float16)
+            self.rmsprop_p = self.rmsprop_p.astype(np.float16)
+            self.params = self.params.astype(np.float16)
         self.t = 1
 
     def forward(self, inputs):

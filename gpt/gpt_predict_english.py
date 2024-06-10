@@ -127,7 +127,7 @@ def predict():
                 file.write(sample[i] + '\n\n\n Model Output: ')
                 fileshow += sample[i] + '\n\n\n Model Output: '
                 continue
-            if ln < 60 and ln > 50 and sample[j] == ' ':
+            if ln < 60 and ln > 50 and sample[j] in character:
                 file.write('\n ')
                 fileshow += "\n "
                 ln = 0

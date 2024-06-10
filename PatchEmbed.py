@@ -122,11 +122,11 @@ class PatchEmbed_convolution(object):
         self.convolution.restore_model(models[-1])
 
 class Position_Embedding(Embedding_layer):
-    def __init__(self, context_length, vocab_size,  embed_dim, adam = False):
+    def __init__(self, context_length, vocab_size,  embed_dim, adam = False, float32=False, float16 = False):
         self.context_length = context_length
-        self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim, adam = adam)
+        self.text_embedding = Embedding_layer(vocab_size, embedding_dim = embed_dim, adam = adam, float32=float32, float16=float16)
         # self.pos_embedding  = Position_Fixed(context_length, embed_dim)
-        self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim, adam = adam)
+        self.pos_embedding = Embedding_layer(context_length, embedding_dim = embed_dim, adam = adam, float32=float32, float16=float16)
         self.adam = adam
 
     def forward(self, inputs):

@@ -165,42 +165,48 @@ def transformer_image_train():
     ADAM = True
     cls_token = True
     float32 = True
+    float16 = False
+
+    if float16:
+        float32 = False
 
     logfile = os.path.join(logdir, 'log_gpt_poetry3000.txt')
-    fpwrite = open(logfile, 'w', encoding='utf-8')
+    fpwrite = open(logfile, 'a+', encoding='utf-8')
 
-    patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM)
+    patchemb = Position_Embedding(context_length, vocab_size, embed_dim, adam=ADAM, float32=float32, float16=float16)
     layers = [patchemb]
     
-    at0 = attdecoderblock_layer(embed_dim, num_h[0], adam=ADAM)
-    at1 = attdecoderblock_layer(embed_dim, num_h[1], adam=ADAM)
-    at2 = attdecoderblock_layer(embed_dim, num_h[2], adam=ADAM)
-    at3 = attdecoderblock_layer(embed_dim, num_h[3], adam=ADAM)
-    at4 = attdecoderblock_layer(embed_dim, num_h[4], adam=ADAM)
-    at5 = attdecoderblock_layer(embed_dim, num_h[5], adam=ADAM)
-    at6 = attdecoderblock_layer(embed_dim, num_h[6], adam=ADAM)
-    at7 = attdecoderblock_layer(embed_dim, num_h[7], adam=ADAM)
-    at8 = attdecoderblock_layer(embed_dim, num_h[8], adam=ADAM)
-    at9 = attdecoderblock_layer(embed_dim, num_h[9], adam=ADAM)
-    at10 = attdecoderblock_layer(embed_dim, num_h[10], adam=ADAM)
-    at11 = attdecoderblock_layer(embed_dim, num_h[11], adam=ADAM)
-    # at12 = attdecoderblock_layer(embed_dim, num_h[12], adam=ADAM)
-    # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM)
+    at0 = attdecoderblock_layer(embed_dim, num_h[0], adam=ADAM, float32=float32, float16=float16)
+    at1 = attdecoderblock_layer(embed_dim, num_h[1], adam=ADAM, float32=float32, float16=float16)
+    at2 = attdecoderblock_layer(embed_dim, num_h[2], adam=ADAM, float32=float32, float16=float16)
+    at3 = attdecoderblock_layer(embed_dim, num_h[3], adam=ADAM, float32=float32, float16=float16)
+    at4 = attdecoderblock_layer(embed_dim, num_h[4], adam=ADAM, float32=float32, float16=float16)
+    at5 = attdecoderblock_layer(embed_dim, num_h[5], adam=ADAM, float32=float32, float16=float16)
+    at6 = attdecoderblock_layer(embed_dim, num_h[6], adam=ADAM, float32=float32, float16=float16)
+    at7 = attdecoderblock_layer(embed_dim, num_h[7], adam=ADAM, float32=float32, float16=float16)
+    at8 = attdecoderblock_layer(embed_dim, num_h[8], adam=ADAM, float32=float32, float16=float16)
+    at9 = attdecoderblock_layer(embed_dim, num_h[9], adam=ADAM, float32=float32, float16=float16)
+    at10 = attdecoderblock_layer(embed_dim, num_h[10], adam=ADAM, float32=float32, float16=float16)
+    at11 = attdecoderblock_layer(embed_dim, num_h[11], adam=ADAM, float32=float32, float16=float16)
+    # at12 = attdecoderblock_layer(embed_dim, num_h[12], adam=ADAM, float32=float32, float16=float16)
+    # at13 = attdecoderblock_layer(embed_dim, num_h[13], adam=ADAM, float32=float32, float16=float16)
 
     # layers += [at0, at1, at2, at3, at4, at5, at6, at7, at8, at9, at10, at11, at12]
-    layers += [at0]#, at1, at2, at3, at4, at5]#, at6, at7, at8, at9, at10, at11]
+    att_layer = [at0, at1, at2, at3, at4]
+    la = int(savename[-5])
+    layers += att_layer[:la + 1] #, at5] #, at6, at7, at8, at9, at10, at11]
 
-    norm = layer_norm(embed_dim, adam=ADAM)
+    norm = layer_norm(embed_dim, adam=ADAM, float32=float32, float16=float16)
     flatten     = flatten_layer()
     # if not cls_token:
     if not single_word:
-        cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32)
+        cll = classify_layer(embed_dim, batchsize, 1, vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32, float16=float16)
         layers += [norm, cll]
     else:
-        cll = classify_layer(embed_dim, batchsize, np.sqrt(context_length), vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32)
+        cll = classify_layer(embed_dim, batchsize, np.sqrt(context_length), vocab_size, cls_token=False, adam=ADAM, relu=False, float32=float32, float16=float16)
         layers += [norm, flatten, cll]
     # else:
-        # cll = fclayer(embed_dim, vocab_size, True, adam=ADAM, float32=float32)
+        # cll = fclayer(embed_dim, vocab_size, True, adam=ADAM, float32=float32, float16=float16)
     jk = 0
     num_attention = 0
     if os.path.exists(pretrained_model):
@@ -218,10 +224,16 @@ def transformer_image_train():
                 try:
                     l.restore_model(models[cnt])
                 except:
+                    jk = 0
+                    l.restore_model(models[cnt - 1])
                     continue
                 cnt += 1
         del models
-    savename = savename.replace(".pkl", "%d.pkl"%num_attention)
+    else:
+        exit(-1)
+
+    nam = savename.split('last')[0] + 'last'
+    savename = nam + "%d.pkl"%num_attention
 
     lr = learning_rate
     try:
@@ -361,7 +373,7 @@ def savemodel(layers, jk):
 
 if __name__ =="__main__":
     single_word = False
-    savename = f"gpt_poetry3000_last.pkl"
+    savename = f"gpt_poetry3000_last4.pkl"
     modelpath = os.path.join(abspath, 'gpt', 'model')
     os.makedirs(modelpath, exist_ok=True)
     pretrained_model = os.path.join(abspath, 'gpt', 'model', savename)

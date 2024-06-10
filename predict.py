@@ -161,7 +161,7 @@ def predict_evaluate(layers):
 
 if __name__ =="__main__":
     savepath = abspath
-    pretrained_model = r'C:\Users\10696\Desktop\access\numpy_transformer\model\epoch_33_loss_0.085326_pre_0.972__pf_pn_fixed.pkl'
+    pretrained_model = r'C:\Users\10696\Desktop\Numpy\numpy_transformer\model\epoch_33_loss_0.085326_pre_0.972__pf_pn_fixed.pkl'
     layers = loading_model(10)
     predict_or_evaluate = False
     predict_evaluate(layers)
