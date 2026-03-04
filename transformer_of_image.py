@@ -115,7 +115,7 @@ def transformer_image_train(num_classes):
     #     Image.fromarray(img.cpu().numpy()).save(os.path.join(abspath, 'dataset', str(i) + ".jpg"))
 
     loss = 999999
-    iters = number_image//batchsize + number_image%batchsize
+    iters = number_image//batchsize + (0 if number_image%batchsize == 0 else 1)
     dot = np.power(0.001, 1/epoch)
     for i in range(25, epoch):
         meanloss = 0
