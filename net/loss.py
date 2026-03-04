@@ -57,12 +57,12 @@ def binary_cross_entropy_logit_loss(predict:np.ndarray, label:np.ndarray):
     return loss, partial, sigmoid
 
 def binary_cross_entropy_loss(sigmoid:np.ndarray, label:np.ndarray):
-    loss = -np.sum((label * np.log(sigmoid + 1e-10)) + ((1 - label) * np.log((1 - sigmoid) + 1e-10))) / predict.size #avoid log(0)
+    loss = -np.sum((label * np.log(sigmoid + 1e-10)) + ((1 - label) * np.log((1 - sigmoid) + 1e-10))) / sigmoid.size #avoid log(0)
     zeros_mask = label==0
     partial = np.zeros_like(sigmoid)
-    partial[~zeros_mask] = -1 / sigmoid[~zeros_mask]
-    partial[zeros_mask] = 1 / (1 - sigmoid[zeros_mask])
-    partial = partial / predict.size
+    partial[~zeros_mask] = -1 / (sigmoid[~zeros_mask] + 1e-13)
+    partial[zeros_mask] = 1 / ((1 - sigmoid[zeros_mask]) + 1e-13)
+    partial = partial / sigmoid.size
     return loss, partial, sigmoid
 
 def mean_square_loss(predict:np.ndarray, label:np.ndarray):
